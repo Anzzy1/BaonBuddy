@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BaonBuddy</title>
+<meta name="theme-color" content="#110E24">
+
+<!-- Theme before paint (no flash) -->
+<script>
+  try {
+    const t = localStorage.getItem('eb.theme');
+    const dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', dark);
+  } catch (e) { document.documentElement.classList.add('dark'); }
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@400..700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
+          sans: ['Geist', 'system-ui', 'sans-serif'],
+        },
+        colors: {
+          bg: 'rgb(var(--bg) / <alpha-value>)',
+          ink: 'rgb(var(--ink) / <alpha-value>)',
+          muted: 'rgb(var(--muted) / <alpha-value>)',
+          ube: 'rgb(var(--ube) / <alpha-value>)',
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  /* ---------- Tokens: ube · mango · calamansi ---------- */
+  :root {
+    --bg: 241 238 250;          /* lilac mist */
+    --ink: 26 21 48;            /* ube ink */
+    --muted: 107 101 133;
+    --ube: 123 92 255;
+    --line: 26 21 48;
+    --surface: 255 255 255;
+    --glass: rgba(255, 255, 255, .68);
+    --glass-b: rgba(26, 21, 48, .08);
+    --glass-hi: rgba(255, 255, 255, .95);
+    --field: rgba(26, 21, 48, .04);
+    --field-b: rgba(26, 21, 48, .10);
+    --blob-o: .38;
+    --status: #4FA81E;
+    --ease: cubic-bezier(.2, .8, .2, 1);
+    --spring: cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .dark {
+    --bg: 17 14 36;             /* ube night */
+    --ink: 243 240 255;
+    --muted: 164 159 194;
+    --ube: 165 139 255;
+    --line: 255 255 255;
+    --surface: 28 24 54;
+    --glass: rgba(255, 255, 255, .045);
+    --glass-b: rgba(255, 255, 255, .09);
+    --glass-hi: rgba(255, 255, 255, .07);
+    --field: rgba(255, 255, 255, .05);
+    --field-b: rgba(255, 255, 255, .10);
+    --blob-o: .30;
+    --status: #8EDB4F;
+  }
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  body { background: rgb(var(--bg)); color: rgb(var(--ink)); }
+  ::selection { background: #FFC93C; color: #1A1530; }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .font-display { font-variation-settings: "opsz" 96; }
+  :focus-visible { outline: 2px solid rgb(var(--ube)); outline-offset: 3px; border-radius: 12px; }
+
+  /* ---------- Ambient background ---------- */
+  .blobs { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .blob { position: absolute; width: 46vmax; height: 46vmax; border-radius: 50%; filter: blur(100px); opacity: var(--blob-o); }
+  .b1 { background: #7B5CFF; top: -20vmax; left: -14vmax; }
+  .b2 { background: #FFC93C; top: 18vmax; right: -22vmax; opacity: calc(var(--blob-o) * .7); }
+  .b3 { background: #FF6FA8; bottom: -26vmax; left: 18vmax; opacity: calc(var(--blob-o) * .6); }
+  .grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: .06; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- Glass cards ---------- */
+  .glass {
+    position: relative; border-radius: 28px;
+    background: var(--glass); border: 1px solid var(--glass-b);
+    backdrop-filter: blur(24px) saturate(150%); -webkit-backdrop-filter: blur(24px) saturate(150%);
+    box-shadow: inset 0 1px 0 var(--glass-hi), 0 24px 60px -36px rgba(20, 10, 60, .45);
+  }
+  .card-title { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -.02em; }
+
+  /* ---------- Hero (the mango card) ---------- */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 32px; color: #1A1530;
+    background: radial-gradient(120% 130% at 100% 0%, #FFE58A 0%, #FFC93C 40%, #FFA51F 100%);
+    box-shadow: 0 34px 80px -42px rgba(255, 165, 31, .85);
+    transition: box-shadow .6s var(--ease);
+  }
+  .hero::before { /* over-budget layer fades in, since gradients can't transition */
+    content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .6s var(--ease);
+    background: radial-gradient(120% 130% at 100% 0%, #FFB3C9 0%, #FF6F91 45%, #FF3D5A 100%);
+  }
+  .hero::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(26, 21, 48, .16) 1px, transparent 1.4px);
+    background-size: 18px 18px;
+    mask-image: radial-gradient(70% 80% at 85% 15%, #000, transparent 70%);
+    -webkit-mask-image: radial-gradient(70% 80% at 85% 15%, #000, transparent 70%);
+  }
+  .hero.is-over::before { opacity: 1; }
+  .hero.is-over { box-shadow: 0 34px 80px -42px rgba(255, 61, 127, .9); }
+  .hero > * { position: relative; z-index: 2; }
+
+  .hero-num { font-size: clamp(3.25rem, 7.6vw, 5.9rem); line-height: .9; letter-spacing: -.05em; font-weight: 800; }
+  .hero-num .peso { font-size: .48em; vertical-align: .66em; margin-right: .08em; font-weight: 700; }
+  .hero-num .cents { font-size: .36em; letter-spacing: -.02em; opacity: .5; margin-left: .04em; }
+
+  .hero-chip { display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 13px 0 11px; border-radius: 99px; background: #1A1530; color: #FFF6D6; font-size: 13px; font-weight: 600; }
+
+  .tile {
+    display: flex; flex-direction: column; gap: 4px; min-width: 0; text-align: left;
+    border-radius: 20px; padding: 14px 14px 12px;
+    background: rgba(26, 21, 48, .08); border: 1px solid rgba(26, 21, 48, .08);
+    transition: transform .35s var(--spring), background .25s;
+  }
+  button.tile:hover { background: rgba(26, 21, 48, .13); transform: translateY(-2px); }
+  button.tile:active { transform: scale(.97); }
+  .tile-label { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; opacity: .62; }
+  .tile-label svg { width: 12px; height: 12px; }
+  .tile-val { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; letter-spacing: -.03em; font-size: clamp(1.15rem, 2.6vw, 1.6rem); line-height: 1.1; }
+  .tile-sub { font-size: 11.5px; opacity: .6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pulse { animation: pulse .6s var(--spring); }
+  @keyframes pulse { 40% { transform: scale(1.06); } }
+
+  .sticker { position: absolute; top: 20px; right: 20px; width: 108px; height: 108px; }
+  .sticker .spin { animation: spin 24s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Status dot ---------- */
+  .status-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--status); flex-shrink: 0; transition: background .5s; }
+  .status-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: ping 2s cubic-bezier(0, 0, .2, 1) infinite; }
+  @keyframes ping { 75%, 100% { transform: scale(2.6); opacity: 0; } }
+
+  /* ---------- Gauge ---------- */
+  .ring-track { fill: none; stroke: rgb(var(--line) / .08); stroke-width: 14; }
+  .ring-bar {
+    fill: none; stroke: var(--status); stroke-width: 14; stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s var(--ease), stroke .5s, opacity .3s;
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--status) 50%, transparent));
+  }
+  .bar { height: 8px; border-radius: 99px; background: rgb(var(--line) / .08); overflow: hidden; }
+  .bar > i { display: block; height: 100%; width: 0; border-radius: inherit; transition: width 1.1s var(--ease), background .5s; }
+  .split { display: flex; gap: 3px; height: 12px; }
+  .split > i { height: 100%; min-width: 8px; border-radius: 99px; }
+
+  /* ---------- Fields ---------- */
+  .field-label { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: rgb(var(--muted)); margin-bottom: 8px; }
+  .input {
+    width: 100%; background: var(--field); border: 1px solid var(--field-b); border-radius: 16px;
+    padding: 12px 14px; font-size: 15px; color: rgb(var(--ink)); outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .input::placeholder { color: rgb(var(--muted) / .7); }
+  .input:focus { border-color: rgb(var(--ube)); box-shadow: 0 0 0 4px rgb(var(--ube) / .18); }
+
+  .amount-field {
+    display: flex; align-items: baseline; gap: 6px; border-radius: 22px; padding: 16px 18px;
+    background: var(--field); border: 1px solid var(--field-b); transition: border-color .2s, box-shadow .2s;
+  }
+  .amount-field:focus-within { border-color: rgb(var(--ube)); box-shadow: 0 0 0 4px rgb(var(--ube) / .18); }
+  .amount-field .peso { font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; font-size: 1.6rem; color: rgb(var(--muted)); }
+  .amount-field input {
+    all: unset; width: 100%; min-width: 0; caret-color: rgb(var(--ube));
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; letter-spacing: -.045em; line-height: 1;
+    font-size: clamp(2.4rem, 6vw, 3.1rem); color: rgb(var(--ink)); font-variant-numeric: tabular-nums;
+  }
+  .amount-field input::placeholder { color: rgb(var(--muted) / .35); }
+  .amount-field.sm input { font-size: 2rem; }
+  .shake { animation: shake .42s; }
+  @keyframes shake { 20%, 60% { transform: translateX(-7px); } 40%, 80% { transform: translateX(7px); } }
+
+  /* ---------- Pills & category picker ---------- */
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 99px;
+    font-size: 13px; font-weight: 500; white-space: nowrap; color: rgb(var(--ink));
+    background: var(--field); border: 1px solid var(--field-b);
+    transition: transform .3s var(--spring), background .2s, color .2s, border-color .2s;
+  }
+  .pill:hover { border-color: rgb(var(--line) / .22); }
+  .pill:active { transform: scale(.94); }
+  .pill[aria-pressed="true"] { background: rgb(var(--ink)); color: rgb(var(--bg)); border-color: transparent; }
+  .pill.sm { height: 28px; padding: 0 11px; font-size: 12px; }
+  .pill.danger { color: #FF3D7F; }
+  .pill.danger.armed { background: #FF3D7F; color: #fff; border-color: transparent; }
+
+  .cat {
+    --c: #999; position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+    padding: 12px; border-radius: 18px; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.2;
+    background: var(--field); border: 1px solid var(--field-b); color: rgb(var(--ink));
+    transition: transform .35s var(--spring), background .25s, border-color .25s, color .25s;
+  }
+  .cat .ic { width: 32px; height: 32px; border-radius: 11px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 18%, transparent); transition: background .25s, color .25s, transform .4s var(--spring); }
+  .cat .ic svg { width: 17px; height: 17px; }
+  .cat:hover { transform: translateY(-2px); }
+  .cat:active { transform: scale(.95); }
+  .cat[aria-pressed="true"] { background: var(--c); color: #1A1530; border-color: transparent; }
+  .cat[aria-pressed="true"] .ic { background: rgba(26, 21, 48, .14); color: #1A1530; transform: rotate(-8deg) scale(1.05); }
+
+  .submit {
+    position: relative; width: 100%; height: 58px; border-radius: 20px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: #7B5CFF; color: #fff; font-weight: 600; font-size: 16px;
+    box-shadow: 0 16px 40px -18px rgba(123, 92, 255, .9), inset 0 1px 0 rgba(255, 255, 255, .25);
+    transition: transform .35s var(--spring), background .3s, color .3s, box-shadow .3s;
+  }
+  .submit:hover { background: #6A48FF; }
+  .submit:active { transform: scale(.98); }
+  .submit .badge { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: #FFC93C; color: #1A1530; transition: transform .45s var(--spring); }
+  .submit .badge svg { width: 17px; height: 17px; }
+  .submit:hover .badge { transform: rotate(90deg); }
+  .submit.done { background: #8EDB4F; color: #1A1530; box-shadow: 0 16px 40px -18px rgba(142, 219, 79, .9); }
+
+  /* ---------- Feed ---------- */
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 10px 6px; font-size: 13px; font-weight: 600; color: rgb(var(--muted)); }
+  .row {
+    --c: #999; display: flex; align-items: center; gap: 14px; padding: 10px; border-radius: 18px; overflow: hidden;
+    transition: background .2s, height .35s var(--ease), opacity .3s, transform .35s var(--ease), padding .35s var(--ease);
+  }
+  .row:hover { background: var(--field); }
+  .row .ic { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; flex-shrink: 0; color: var(--c); background: color-mix(in srgb, var(--c) 17%, transparent); }
+  .row .ic svg { width: 20px; height: 20px; }
+  .row.out { opacity: .45; }
+  .row.leaving { opacity: 0; transform: translateX(32px); padding-top: 0; padding-bottom: 0; }
+  .row.is-new { animation: rowIn .7s var(--spring) both; }
+  .row.is-new .ic { animation: pop .6s var(--spring) .1s both; }
+  .row.stagger { animation: fadeUp .6s var(--ease) both; animation-delay: calc(var(--i) * 45ms + .35s); }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(-12px) scale(.97); background: rgba(255, 201, 60, .35); } to { background: transparent; } }
+  @keyframes pop { from { transform: scale(.4) rotate(-20deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } }
+
+  .del { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; color: rgb(var(--muted)); opacity: 0; transform: scale(.8); transition: opacity .2s, transform .3s var(--spring), background .2s, color .2s; }
+  .del svg { width: 16px; height: 16px; }
+  .row:hover .del, .row:focus-within .del { opacity: 1; transform: none; }
+  .del:hover { background: rgba(255, 61, 127, .14); color: #FF3D7F; }
+  @media (hover: none) { .del { opacity: 1; transform: none; } }
+
+  .no-scrollbar { scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 22px; z-index: 60; transform: translate(-50%, 160%);
+    display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px);
+    padding: 10px 10px 10px 18px; border-radius: 18px; overflow: hidden;
+    background: rgb(var(--ink)); color: rgb(var(--bg)); font-size: 14px; font-weight: 500;
+    box-shadow: 0 24px 60px -20px rgba(10, 5, 40, .6);
+    transition: transform .55s var(--spring);
+  }
+  .toast.show { transform: translate(-50%, 0); }
+  .toast button { background: #FFC93C; color: #1A1530; font-weight: 600; padding: 7px 13px; border-radius: 11px; }
+  .toast .tbar { position: absolute; left: 0; bottom: 0; height: 3px; width: 100%; background: #FFC93C; transform-origin: left; }
+  .toast.show .tbar { animation: tbar 5s linear forwards; }
+  @keyframes tbar { to { transform: scaleX(0); } }
+
+  /* ---------- Settings dialog ---------- */
+  dialog { border: 0; padding: 0; background: transparent; color: rgb(var(--ink)); width: 100%; max-width: min(440px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(10, 6, 30, .55); backdrop-filter: blur(6px); }
+  dialog[open] .sheet { animation: sheetIn .5s var(--spring); }
+  @keyframes sheetIn { from { opacity: 0; transform: translateY(24px) scale(.96); } }
+  .sheet { background: rgb(var(--surface)); border: 1px solid var(--glass-b); border-radius: 28px; padding: 24px; }
+
+  .icon-btn { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--glass-b); backdrop-filter: blur(12px); transition: transform .35s var(--spring); }
+  .icon-btn:hover { transform: rotate(-10deg) scale(1.06); }
+  .icon-btn:active { transform: scale(.92); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  html.dark .i-moon, html:not(.dark) .i-sun { display: none; }
+
+  .kbd { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--field-b); color: rgb(var(--muted)); }
+
+  /* ---------- One orchestrated load ---------- */
+  .reveal { animation: rise .9s var(--ease) both; animation-delay: var(--d, 0s); }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) scale(.985); } }
+
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+
+<body class="font-sans antialiased min-h-screen">
+  <div class="blobs" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 pb-28">
+    <!-- Header -->
+    <header class="flex items-center justify-between gap-3 py-5 reveal">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-[14px] bg-[#FFC93C] text-[#1A1530] grid place-items-center font-display font-extrabold text-xl -rotate-6 shadow-[0_10px_24px_-10px_rgba(255,165,31,.9)]"><img src="app/icon.svg" alt="BaonBuddy" class="w-full h-full rounded-[14px]"></div>
+        <div class="min-w-0">
+          <p class="font-display font-extrabold text-lg leading-none tracking-tight">BaonBuddy</p>
+          <p class="text-xs text-muted mt-1">Budget mo, kontrolado mo.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="periodPill" class="pill hidden sm:inline-flex" data-open-settings><i data-lucide="calendar"></i><span id="periodText"></span></button>
+        <button class="icon-btn" data-open-settings aria-label="Allowance settings"><i data-lucide="settings-2"></i></button>
+        <button id="themeBtn" class="icon-btn" aria-label="Toggle light or dark theme">
+          <span class="i-sun"><i data-lucide="sun"></i></span><span class="i-moon"><i data-lucide="moon"></i></span>
+        </button>
+      </div>
+    </header>
+
+    <main class="grid gap-4 lg:grid-cols-12">
+      <!-- 1. Balance summary -->
+      <section id="hero" class="hero reveal p-6 sm:p-8 lg:col-span-7 flex flex-col justify-between gap-8" style="--d:.08s" aria-label="Balance summary">
+        <div class="sm:pr-32">
+          <div class="flex items-center gap-2.5 flex-wrap">
+            <span id="statusChip" class="hero-chip"><span class="status-dot"></span><span>Sakto pa</span></span>
+            <span id="heroLabel" class="text-sm font-semibold opacity-70">Remaining balance</span>
+          </div>
+          <h1 id="remain" class="hero-num font-display tnum mt-5" aria-live="polite">₱0</h1>
+        </div>
+
+        <div class="sticker hidden sm:block" aria-hidden="true">
+          <svg viewBox="0 0 120 120" class="spin w-full h-full">
+            <defs><path id="circ" d="M60,60 m-47,0 a47,47 0 1,1 94,0 a47,47 0 1,1 -94,0"/></defs>
+            <text font-family="Geist, sans-serif" font-size="10.5" font-weight="600" fill="#1A1530">
+              <textPath href="#circ" textLength="292" lengthAdjust="spacing">baonbuddy ✦ baon tracker ✦ baonbuddy ✦ </textPath>
+            </text>
+          </svg>
+          <div class="absolute inset-0 grid place-items-center">
+            <div class="w-12 h-12 rounded-full bg-[#1A1530] text-[#FFC93C] grid place-items-center"><i data-lucide="wallet"></i></div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 sm:gap-3">
+          <button class="tile" data-open-settings aria-label="Edit total budget">
+            <span class="tile-label">Total budget <i data-lucide="pencil"></i></span>
+            <span id="budgetVal" class="tile-val tnum">₱0</span>
+            <span id="budgetSub" class="tile-sub"></span>
+          </button>
+          <div id="spentTile" class="tile">
+            <span class="tile-label">Total spent</span>
+            <span id="spentVal" class="tile-val tnum">₱0</span>
+            <span id="spentSub" class="tile-sub"></span>
+          </div>
+          <div class="tile">
+            <span class="tile-label">Safe per day</span>
+            <span id="perDayVal" class="tile-val tnum">₱0</span>
+            <span id="perDaySub" class="tile-sub"></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4. Budget meter -->
+      <section class="glass reveal p-6 lg:col-span-5 flex flex-col" style="--d:.16s" aria-label="Budget meter">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title">Budget meter</h2>
+          <span id="pctUsed" class="text-sm text-muted tnum"></span>
+        </div>
+
+        <div class="flex items-center gap-5 sm:gap-6 mt-5">
+          <div class="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0">
+            <svg viewBox="0 0 180 180" class="w-full h-full -rotate-90">
+              <circle cx="90" cy="90" r="76" class="ring-track"/>
+              <circle id="ring" cx="90" cy="90" r="76" class="ring-bar" style="stroke-dasharray:477.5;stroke-dashoffset:477.5"/>
+            </svg>
+            <div class="absolute inset-0 grid place-items-center text-center">
+              <div>
+                <p id="ringPct" class="font-display font-extrabold text-4xl tracking-tight tnum leading-none">0%</p>
+                <p class="text-xs text-muted mt-1">used</p>
+              </div>
+            </div>
+          </div>
+          <div class="min-w-0">
+            <p class="flex items-center gap-2"><span class="status-dot"></span><span id="gaugeTitle" class="font-display font-bold text-xl tracking-tight leading-tight">Chill ka pa</span></p>
+            <p id="gaugeMsg" class="text-sm text-muted mt-2 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <div class="mt-6 space-y-3">
+          <div>
+            <div class="flex justify-between text-sm mb-1.5"><span class="text-muted">Time passed</span><span id="timeVal" class="font-medium tnum"></span></div>
+            <div class="bar"><i id="timeBar" style="background:rgb(var(--ube))"></i></div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-1.5"><span class="text-muted">Money used</span><span id="moneyVal" class="font-medium tnum"></span></div>
+            <div class="bar"><i id="moneyBar" style="background:var(--status)"></i></div>
+          </div>
+        </div>
+
+        <div class="mt-auto pt-6">
+          <p class="text-sm text-muted mb-2.5">Where it's going</p>
+          <div id="split" class="split"></div>
+          <div id="legend" class="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-[13px]"></div>
+        </div>
+      </section>
+
+      <!-- 2. Quick expense logger -->
+      <section id="logger" class="glass reveal p-6 lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:sticky lg:top-6 self-start" style="--d:.24s" aria-label="Log an expense">
+        <div class="flex items-center justify-between">
+          <h2 class="card-title">Log a gastos</h2>
+          <span class="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted">Press <span class="kbd">N</span></span>
+        </div>
+
+        <form id="form" class="mt-4" novalidate autocomplete="off">
+          <label id="amountField" class="amount-field" for="amount">
+            <span class="peso">₱</span>
+            <input id="amount" inputmode="decimal" placeholder="0" aria-label="Amount in pesos">
+          </label>
+          <div class="flex gap-2 mt-3 flex-wrap" id="quick">
+            <button type="button" class="pill sm" data-add="20">+20</button>
+            <button type="button" class="pill sm" data-add="50">+50</button>
+            <button type="button" class="pill sm" data-add="100">+100</button>
+            <button type="button" class="pill sm" data-add="500">+500</button>
+          </div>
+
+          <p class="field-label mt-5">Category</p>
+          <div id="catGrid" class="grid grid-cols-3 gap-2" role="group" aria-label="Category"></div>
+
+          <div class="mt-5">
+            <div class="field-label">
+              <label for="date">Date</label>
+              <span class="flex gap-1.5">
+                <button type="button" class="pill sm" data-day="0">Today</button>
+                <button type="button" class="pill sm" data-day="1">Yesterday</button>
+              </span>
+            </div>
+            <input id="date" type="date" class="input">
+          </div>
+
+          <div class="mt-4">
+            <label class="field-label" for="note"><span>Note</span><span class="opacity-70">Optional</span></label>
+            <input id="note" class="input" maxlength="60" placeholder="Siomai rice sa canteen">
+          </div>
+
+          <button id="submitBtn" type="submit" class="submit mt-5">
+            <span class="badge"><i data-lucide="plus"></i></span><span id="submitLabel">Log expense</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- 3. Expense feed -->
+      <section class="glass reveal p-4 sm:p-6 lg:col-span-7 lg:col-start-1 lg:row-start-2 self-start" style="--d:.32s" aria-label="Recent expenses">
+        <div class="px-2 sm:px-0">
+          <h2 class="card-title">Recent gastos</h2>
+          <p id="feedMeta" class="text-sm text-muted mt-1"></p>
+        </div>
+        <div id="filters" class="flex gap-2 overflow-x-auto no-scrollbar mt-4 px-2 sm:px-0 -mx-0" role="group" aria-label="Filter by category"></div>
+        <div id="feed" class="mt-2"></div>
+      </section>
+    </main>
+
+    <p class="text-center text-xs text-muted mt-10">Prototype v0.1. Your data stays in this browser.</p>
+  </div>
+
+  <!-- Toast with undo -->
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastText"></span>
+    <button id="undoBtn" type="button">Undo</button>
+    <span id="toastBar" class="tbar"></span>
+  </div>
+
+  <!-- Settings -->
+  <dialog id="settings" aria-label="Allowance settings">
+    <form id="setForm" class="sheet" novalidate>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h3 class="card-title">Allowance settings</h3>
+          <p class="text-sm text-muted mt-1">Set your budget and the dates it should last.</p>
+        </div>
+        <button type="button" class="icon-btn shrink-0" data-close aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+
+      <label class="block mt-5" for="setBudget"><span class="field-label">Allowance amount</span></label>
+      <div class="amount-field sm"><span class="peso">₱</span><input id="setBudget" inputmode="decimal" placeholder="5000"></div>
+
+      <div class="flex gap-2 mt-4">
+        <button type="button" class="pill sm" data-preset="week">This week</button>
+        <button type="button" class="pill sm" data-preset="month">This month</button>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mt-3">
+        <label><span class="field-label">Starts</span><input id="setStart" type="date" class="input"></label>
+        <label><span class="field-label">Ends</span><input id="setEnd" type="date" class="input"></label>
+      </div>
+      <p id="setErr" class="text-sm text-[#FF3D7F] mt-3 hidden"></p>
+
+      <button type="submit" class="submit mt-5"><span class="badge"><i data-lucide="check"></i></span>Save changes</button>
+
+      <div class="mt-6 pt-5 border-t" style="border-color:var(--field-b)">
+        <p class="field-label">Your data</p>
+        <div class="flex gap-2 flex-wrap">
+          <button type="button" id="demoBtn" class="pill sm">Load sample data</button>
+          <button type="button" id="clearBtn" class="pill sm danger">Clear all expenses</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+<script>
+(() => {
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const canHover = matchMedia('(hover: hover)').matches;
+  const KEY = 'estudyante-balanse.v1';
+
+  /* ---------- Categories ---------- */
+  const CATS = [
+    { id: 'food',    label: 'Food',            icon: 'utensils',     color: '#FF9F43' },
+    { id: 'transpo', label: 'Transpo',         icon: 'bus',          color: '#38BDF8' },
+    { id: 'school',  label: 'School Supplies', icon: 'pencil-ruler', color: '#A58BFF' },
+    { id: 'load',    label: 'Load & Data',     icon: 'smartphone',   color: '#2DD4BF' },
+    { id: 'gala',    label: 'Gala',            icon: 'party-popper', color: '#FF6FA8' },
+    { id: 'other',   label: 'Others',          icon: 'shapes',       color: '#B0AAC8' },
+  ];
+  const catById = id => CATS.find(c => c.id === id) || CATS[CATS.length - 1];
+
+  /* ---------- Helpers ---------- */
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const diffDays = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+  const today = () => iso(new Date());
+  const monthRange = () => { const t = new Date(); return [iso(new Date(t.getFullYear(), t.getMonth(), 1)), iso(new Date(t.getFullYear(), t.getMonth() + 1, 0))]; };
+  const weekRange = () => { const t = new Date(); const s = addDays(t, -((t.getDay() + 6) % 7)); return [iso(s), iso(addDays(s, 6))]; };
+  const shortDate = s => parse(s).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+  const peso = v => '₱' + Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pesoR = v => '₱' + Math.round(Math.abs(v)).toLocaleString('en-PH');
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const esc = s => String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const isDark = () => document.documentElement.classList.contains('dark');
+  const icons = () => window.lucide && lucide.createIcons({ attrs: { 'stroke-width': 2 } });
+  const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
+
+  /* ---------- State ---------- */
+  function sampleState() {
+    const [start, end] = monthRange();
+    const t = new Date();
+    const d = n => { const x = iso(addDays(t, -n)); return x < start ? start : x; };
+    const raw = [
+      [0, 'food', 85, 'Siomai rice + gulaman'], [0, 'transpo', 26, 'Jeep papunta at pauwi'],
+      [1, 'school', 150, 'Yellow pad + ballpen'], [1, 'load', 99, 'Data promo'], [1, 'food', 65, 'Fishball break'],
+      [2, 'gala', 220, 'Milk tea with the tropa'], [2, 'transpo', 26, ''],
+      [3, 'school', 45, 'Printing ng reviewer'], [4, 'food', 120, 'Tapsilog'],
+      [5, 'other', 350, 'Ambag sa group project'], [6, 'transpo', 26, ''], [6, 'food', 95, 'Lunch sa karinderya'],
+    ];
+    const ts = Date.now();
+    return { budget: 5000, start, end, expenses: raw.map(([n, cat, amount, note], i) => ({ id: uid(), cat, amount, note, date: d(n), ts: ts - i * 1000 })) };
+  }
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.expenses) && s.start && s.end) return s; } catch (e) {}
+    return null;
+  }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+  let state = load() || sampleState();
+  save();
+
+  const ui = { cat: 'food', filter: 'all', newId: null, first: true };
+
+  /* ---------- Derived numbers ---------- */
+  function compute() {
+    const { budget, start, end } = state;
+    const inPeriod = state.expenses.filter(e => e.date >= start && e.date <= end);
+    const spent = inPeriod.reduce((s, e) => s + e.amount, 0);
+    const remaining = budget - spent;
+    const pct = budget > 0 ? (spent / budget) * 100 : 0;
+    const total = diffDays(start, end) + 1;
+    const t = today();
+    const elapsed = Math.min(total, Math.max(0, diffDays(start, t) + 1));
+    const left = Math.min(total, Math.max(0, diffDays(t, end) + 1));
+    const timePct = (elapsed / total) * 100;
+    const perDay = remaining > 0 && left > 0 ? remaining / left : 0;
+    const byCat = CATS.map(c => ({ ...c, sum: inPeriod.filter(e => e.cat === c.id).reduce((s, e) => s + e.amount, 0) }))
+      .filter(c => c.sum > 0).sort((a, b) => b.sum - a.sum);
+
+    let st;
+    if (pct > 100) st = { color: '#FF3D7F', chip: 'Lagpas na', title: 'Over budget ka na', msg: `You're ${peso(-remaining)} over. Baon mode muna until the next allowance.` };
+    else if (pct >= 85) st = { color: '#FF7A3D', chip: 'Ingat', title: 'Malapit na sa limit', msg: `Only ${peso(remaining)} left for ${left} day${left === 1 ? '' : 's'}. Spend on essentials first.` };
+    else if (pct > timePct + 10 && left > 0) st = { color: '#FFB020', chip: 'Medyo mabilis', title: 'Medyo mabilis ang gastos', msg: `${Math.round(pct)}% of your money is gone, but only ${Math.round(timePct)}% of the period has passed.` };
+    else st = { color: isDark() ? '#8EDB4F' : '#4FA81E', chip: 'Sakto pa', title: 'Chill ka pa', msg: left > 0 ? `You're on pace. Keep daily spending under ${pesoR(perDay)} and you'll make it.` : 'Period done, and you stayed within budget.' };
+
+    return { inPeriod, spent, remaining, pct, total, elapsed, left, timePct, perDay, byCat, st };
+  }
+
+  /* ---------- Number tween ---------- */
+  function tween(el, to, fmt, dur = 900) {
+    const from = parseFloat(el.dataset.v || '0');
+    el.dataset.v = to;
+    cancelAnimationFrame(el._raf);
+    if (reduced || from === to) { el.innerHTML = fmt(to); return; }
+    const t0 = performance.now();
+    const step = now => {
+      const p = Math.min(1, (now - t0) / dur);
+      el.innerHTML = fmt(from + (to - from) * (1 - Math.pow(1 - p, 4)));
+      if (p < 1) el._raf = requestAnimationFrame(step);
+    };
+    el._raf = requestAnimationFrame(step);
+  }
+  const heroFmt = v => {
+    const [i, c] = Math.abs(v).toFixed(2).split('.');
+    return `<span class="peso">₱</span>${Number(i).toLocaleString('en-PH')}<span class="cents">.${c}</span>`;
+  };
+
+  /* ---------- Render: summary + meter ---------- */
+  function renderSummary(c) {
+    document.documentElement.style.setProperty('--status', c.st.color);
+    const over = c.remaining < 0;
+    $('#hero').classList.toggle('is-over', over);
+    $('#heroLabel').textContent = over ? 'Over budget by' : 'Remaining balance';
+    $('#statusChip').innerHTML = `<span class="status-dot"></span><span>${c.st.chip}</span>`;
+    tween($('#remain'), c.remaining, heroFmt, ui.first ? 1400 : 800);
+
+    tween($('#budgetVal'), state.budget, pesoR);
+    tween($('#spentVal'), c.spent, pesoR);
+    tween($('#perDayVal'), c.perDay, pesoR);
+    $('#budgetSub').textContent = `${shortDate(state.start)} – ${shortDate(state.end)}`;
+    $('#spentSub').textContent = `${c.inPeriod.length} ${c.inPeriod.length === 1 ? 'entry' : 'entries'}`;
+    $('#perDaySub').textContent = c.left > 0 ? `for ${c.left} day${c.left === 1 ? '' : 's'} left` : 'Period ended';
+    $('#periodText').textContent = `${shortDate(state.start)} – ${shortDate(state.end)}`;
+
+    const C = 2 * Math.PI * 76;
+    const ring = $('#ring');
+    const paint = () => {
+      ring.style.strokeDashoffset = C * (1 - Math.min(c.pct, 100) / 100);
+      ring.style.opacity = c.pct > 0 ? 1 : 0;
+      $('#timeBar').style.width = c.timePct + '%';
+      $('#moneyBar').style.width = Math.min(100, c.pct) + '%';
+    };
+    ui.first ? setTimeout(paint, reduced ? 0 : 300) : paint();
+    tween($('#ringPct'), c.pct, v => `${Math.round(v)}<span class="text-xl">%</span>`, ui.first ? 1400 : 800);
+    $('#pctUsed').textContent = `${pesoR(c.spent)} of ${pesoR(state.budget)}`;
+    $('#gaugeTitle').textContent = c.st.title;
+    $('#gaugeMsg').textContent = c.st.msg;
+    $('#timeVal').textContent = `Day ${c.elapsed} of ${c.total}`;
+    $('#moneyVal').textContent = `${Math.round(c.pct)}%`;
+
+    $('#split').innerHTML = c.byCat.length
+      ? c.byCat.map(x => `<i style="flex-grow:${x.sum};background:${x.color}" title="${esc(x.label)}"></i>`).join('')
+      : `<i style="flex-grow:1;background:rgb(var(--line) / .08)"></i>`;
+    $('#legend').innerHTML = c.byCat.length
+      ? c.byCat.map(x => `<span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:${x.color}"></span>${esc(x.label)} <span class="text-muted tnum">${pesoR(x.sum)}</span></span>`).join('')
+      : `<span class="text-muted">Nothing logged in this period yet.</span>`;
+  }
+
+  /* ---------- Render: feed ---------- */
+  function dayLabel(s) {
+    const d = diffDays(s, today());
+    if (d === 0) return 'Today';
+    if (d === 1) return 'Yesterday';
+    return parse(s).toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  function renderFeed(c) {
+    const counts = {};
+    state.expenses.forEach(e => (counts[e.cat] = (counts[e.cat] || 0) + 1));
+    if (ui.filter !== 'all' && !counts[ui.filter]) ui.filter = 'all';
+
+    $('#filters').innerHTML = [{ id: 'all', label: 'All' }, ...CATS.filter(x => counts[x.id])]
+      .map(f => `<button type="button" class="pill sm" data-filter="${f.id}" aria-pressed="${ui.filter === f.id}">${esc(f.label)}${f.id !== 'all' ? ` <span class="opacity-60 tnum">${counts[f.id]}</span>` : ''}</button>`).join('');
+
+    $('#feedMeta').textContent = `${c.inPeriod.length} ${c.inPeriod.length === 1 ? 'entry' : 'entries'} this period, ${peso(c.spent)} spent`;
+
+    const list = state.expenses
+      .filter(e => ui.filter === 'all' || e.cat === ui.filter)
+      .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.ts - a.ts));
+
+    if (!list.length) {
+      $('#feed').innerHTML = `
+        <div class="text-center py-14 px-4">
+          <div class="mx-auto w-14 h-14 rounded-2xl grid place-items-center bg-[#FFC93C] text-[#1A1530] mb-4 rotate-6"><i data-lucide="sparkles"></i></div>
+          <p class="font-display font-bold text-xl tracking-tight">Wala pang gastos dito</p>
+          <p class="text-sm text-muted mt-1">Log your first expense. It takes about three seconds.</p>
+        </div>`;
+      return;
+    }
+
+    const groups = [];
+    list.forEach(e => {
+      const g = groups[groups.length - 1];
+      g && g.date === e.date ? g.items.push(e) : groups.push({ date: e.date, items: [e] });
+    });
+
+    let i = 0;
+    $('#feed').innerHTML = groups.map(g => {
+      const sum = g.items.reduce((s, e) => s + e.amount, 0);
+      return `<div class="day-head"><span>${dayLabel(g.date)}</span><span class="tnum">${peso(sum)}</span></div>` +
+        g.items.map(e => {
+          const cat = catById(e.cat);
+          const out = e.date < state.start || e.date > state.end;
+          const cls = ['row', e.id === ui.newId ? 'is-new' : '', ui.first && i < 12 ? 'stagger' : '', out ? 'out' : ''].join(' ');
+          const title = esc(e.note || cat.label);
+          return `<div class="${cls}" data-id="${e.id}" style="--c:${cat.color};--i:${i++}">
+            <div class="ic"><i data-lucide="${cat.icon}"></i></div>
+            <div class="min-w-0 flex-1">
+              <p class="font-medium truncate">${title}</p>
+              <p class="text-[13px] text-muted mt-0.5 truncate">${esc(cat.label)}${out ? ', outside this period' : ''}</p>
+            </div>
+            <p class="font-display font-bold text-lg tracking-tight tnum whitespace-nowrap">−${peso(e.amount)}</p>
+            <button type="button" class="del" data-del="${e.id}" aria-label="Delete ${title}"><i data-lucide="trash-2"></i></button>
+          </div>`;
+        }).join('');
+    }).join('');
+  }
+
+  function render() {
+    const c = compute();
+    renderSummary(c);
+    renderFeed(c);
+    icons();
+    ui.newId = null;
+    ui.first = false;
+  }
+
+  /* ---------- Toast ---------- */
+  let toastTimer = null, undoFn = null;
+  function toast(text, onUndo) {
+    $('#toastText').textContent = text;
+    undoFn = onUndo || null;
+    $('#undoBtn').hidden = !onUndo;
+    const bar = $('#toastBar');
+    bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+    $('#toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 5000);
+  }
+  function hideToast() { $('#toast').classList.remove('show'); undoFn = null; }
+  $('#undoBtn').addEventListener('click', () => { const f = undoFn; hideToast(); f && f(); });
+
+  /* ---------- Logger ---------- */
+  const amount = $('#amount'), dateIn = $('#date'), note = $('#note');
+
+  $('#catGrid').innerHTML = CATS.map(c =>
+    `<button type="button" class="cat" data-cat="${c.id}" style="--c:${c.color}" aria-pressed="${c.id === ui.cat}">
+      <span class="ic"><i data-lucide="${c.icon}"></i></span><span>${esc(c.label)}</span>
+    </button>`).join('');
+
+  $('#catGrid').addEventListener('click', e => {
+    const b = e.target.closest('[data-cat]'); if (!b) return;
+    ui.cat = b.dataset.cat;
+    $$('.cat').forEach(x => x.setAttribute('aria-pressed', x === b));
+  });
+
+  amount.addEventListener('input', () => {
+    let v = amount.value.replace(/[^\d.]/g, '');
+    const firstDot = v.indexOf('.');
+    if (firstDot !== -1) v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, '');
+    const [a, b] = v.split('.');
+    amount.value = b !== undefined ? a.slice(0, 7) + '.' + b.slice(0, 2) : a.slice(0, 7);
+  });
+
+  $('#quick').addEventListener('click', e => {
+    const b = e.target.closest('[data-add]'); if (!b) return;
+    const next = (parseFloat(amount.value) || 0) + Number(b.dataset.add);
+    amount.value = String(Math.round(next * 100) / 100);
+    replay($('#amountField'), 'pulse');
+  });
+
+  function syncDayChips() {
+    const v = dateIn.value;
+    $$('[data-day]').forEach(b => b.setAttribute('aria-pressed', v === iso(addDays(new Date(), -Number(b.dataset.day)))));
+  }
+  dateIn.value = today();
+  syncDayChips();
+  dateIn.addEventListener('change', syncDayChips);
+  $$('[data-day]').forEach(b => b.addEventListener('click', () => {
+    dateIn.value = iso(addDays(new Date(), -Number(b.dataset.day)));
+    syncDayChips();
+  }));
+
+  $('#form').addEventListener('submit', e => {
+    e.preventDefault();
+    const amt = parseFloat(amount.value);
+    if (!(amt > 0)) {
+      replay($('#amountField'), 'shake');
+      amount.focus();
+      toast('Enter an amount first.');
+      return;
+    }
+    const exp = { id: uid(), amount: Math.round(amt * 100) / 100, cat: ui.cat, date: dateIn.value || today(), note: note.value.trim(), ts: Date.now() };
+    state.expenses.push(exp);
+    ui.newId = exp.id;
+    if (ui.filter !== 'all' && ui.filter !== exp.cat) ui.filter = 'all';
+    save();
+    render();
+    replay($('#spentTile'), 'pulse');
+    navigator.vibrate && navigator.vibrate(10);
+
+    const btn = $('#submitBtn');
+    btn.classList.add('done');
+    $('#submitLabel').textContent = 'Logged';
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.classList.remove('done'); $('#submitLabel').textContent = 'Log expense'; }, 1300);
+
+    amount.value = ''; note.value = '';
+    if (canHover) amount.focus();
+
+    const cat = catById(exp.cat);
+    toast(`Logged ${peso(exp.amount)} for ${cat.label}`, () => {
+      state.expenses = state.expenses.filter(x => x.id !== exp.id);
+      save(); render();
+    });
+  });
+
+  /* ---------- Feed actions ---------- */
+  $('#feed').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if (!b) return;
+    const row = b.closest('.row');
+    if (row.classList.contains('leaving')) return;
+    const removed = state.expenses.find(x => x.id === b.dataset.del);
+    if (!removed) return;
+
+    row.style.height = row.offsetHeight + 'px';
+    void row.offsetHeight;
+    row.classList.add('leaving');
+    row.style.height = '0px';
+
+    setTimeout(() => {
+      state.expenses = state.expenses.filter(x => x.id !== removed.id);
+      save(); render();
+      toast(`Deleted ${peso(removed.amount)} for ${catById(removed.cat).label}`, () => {
+        state.expenses.push(removed);
+        ui.newId = removed.id;
+        save(); render();
+      });
+    }, reduced ? 0 : 320);
+  });
+
+  $('#filters').addEventListener('click', e => {
+    const b = e.target.closest('[data-filter]'); if (!b) return;
+    ui.filter = b.dataset.filter;
+    renderFeed(compute());
+    icons();
+  });
+
+  /* ---------- Settings ---------- */
+  const dlg = $('#settings');
+  function openSettings() {
+    $('#setBudget').value = state.budget;
+    $('#setStart').value = state.start;
+    $('#setEnd').value = state.end;
+    $('#setErr').classList.add('hidden');
+    disarmClear();
+    dlg.showModal();
+  }
+  $$('[data-open-settings]').forEach(b => b.addEventListener('click', openSettings));
+  $('[data-close]').addEventListener('click', () => dlg.close());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+  $('#setBudget').addEventListener('input', e => { e.target.value = e.target.value.replace(/[^\d.]/g, '').slice(0, 9); });
+  $$('[data-preset]').forEach(b => b.addEventListener('click', () => {
+    const [s, en] = b.dataset.preset === 'week' ? weekRange() : monthRange();
+    $('#setStart').value = s; $('#setEnd').value = en;
+  }));
+
+  $('#setForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const budget = parseFloat($('#setBudget').value);
+    const start = $('#setStart').value, end = $('#setEnd').value;
+    const err = $('#setErr');
+    let msg = '';
+    if (!(budget > 0)) msg = 'Enter an allowance amount greater than ₱0.';
+    else if (!start || !end) msg = 'Pick both a start and an end date.';
+    else if (end < start) msg = 'The end date has to come after the start date.';
+    if (msg) { err.textContent = msg; err.classList.remove('hidden'); return; }
+    state.budget = Math.round(budget * 100) / 100;
+    state.start = start; state.end = end;
+    save(); dlg.close(); render();
+    toast('Allowance settings saved');
+  });
+
+  $('#demoBtn').addEventListener('click', () => {
+    state = sampleState(); ui.filter = 'all'; ui.first = true;
+    save(); dlg.close(); render();
+    toast('Sample data loaded');
+  });
+
+  let armTimer;
+  function disarmClear() { clearTimeout(armTimer); const b = $('#clearBtn'); b.classList.remove('armed'); b.textContent = 'Clear all expenses'; }
+  $('#clearBtn').addEventListener('click', () => {
+    const b = $('#clearBtn');
+    if (!b.classList.contains('armed')) {
+      b.classList.add('armed'); b.textContent = 'Tap again to clear';
+      armTimer = setTimeout(disarmClear, 3000);
+      return;
+    }
+    const backup = state.expenses;
+    state.expenses = []; ui.filter = 'all';
+    save(); dlg.close(); render();
+    toast(`Cleared ${backup.length} expenses`, () => { state.expenses = backup; save(); render(); });
+  });
+
+  /* ---------- Theme (circular reveal) ---------- */
+  $('#themeBtn').addEventListener('click', () => {
+    const btn = $('#themeBtn').getBoundingClientRect();
+    const x = btn.left + btn.width / 2, y = btn.top + btn.height / 2;
+    const flip = () => {
+      const dark = !isDark();
+      document.documentElement.classList.toggle('dark', dark);
+      $('meta[name="theme-color"]').content = dark ? '#110E24' : '#F1EEFA';
+      try { localStorage.setItem('eb.theme', dark ? 'dark' : 'light'); } catch (e) {}
+      renderSummary(compute());
+    };
+    if (!document.startViewTransition || reduced) { flip(); return; }
+    const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+    document.startViewTransition(flip).ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+        { duration: 650, easing: 'cubic-bezier(.7,0,.2,1)', pseudoElement: '::view-transition-new(root)' }
+      );
+    });
+  });
+
+  /* ---------- Keyboard: N to log ---------- */
+  document.addEventListener('keydown', e => {
+    if (e.key.toLowerCase() !== 'n' || e.metaKey || e.ctrlKey || e.altKey || dlg.open) return;
+    if (/^(input|textarea|select)$/i.test(document.activeElement.tagName)) return;
+    e.preventDefault();
+    $('#logger').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    amount.focus({ preventScroll: true });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
