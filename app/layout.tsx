@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Bricolage_Grotesque, Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -20,6 +20,15 @@ const mono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'BaonBuddy',
   description: 'Budget mo, kontrolado mo.',
+};
+
+// viewport-fit=cover lets iOS (and Android's SystemBars) report the notch and
+// home-indicator insets, which globals.css applies as safe-area padding.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#FFFFFF',
 };
 
 export default function RootLayout({

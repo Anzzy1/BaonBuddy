@@ -6,6 +6,7 @@ import Mascot from '@/components/Mascot';
 import { ChatInput, TypingDots } from '@/components/tabs/LogTab';
 import { AppState, Computed, pesoR } from '@/lib/budget';
 import { ruleReply } from '@/lib/advisor';
+import { adviceReply } from '@/lib/engine';
 
 export type AdvisorMsg = { role: 'user' | 'assistant'; text: string };
 
@@ -50,17 +51,11 @@ export default function AdvisorTab({ state, c, messages, setMessages }: AdvisorT
     setMessages(prev => [...prev, { role: 'user', text }]);
     setLoading(true);
     try {
-      const res = await fetch('/api/advice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state, history, message: text }),
-      });
-      if (!res.ok) throw new Error(String(res.status));
-      const data = await res.json();
+      // Runs in the browser: rule-based math instantly, local AI when available
+      const data = await adviceReply(state, history, text);
       setSource(data.source);
       setMessages(prev => [...prev, { role: 'assistant', text: data.reply }]);
     } catch {
-      // Server unreachable (offline): answer in the browser with the same rules
       setSource('rules');
       setMessages(prev => [...prev, { role: 'assistant', text: ruleReply(state, text, history).reply }]);
     } finally {

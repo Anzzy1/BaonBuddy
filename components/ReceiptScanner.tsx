@@ -104,8 +104,14 @@ export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
     try {
       const canvas = await prepareImage(file);
       const { createWorker } = await import('tesseract.js');
-      setStatus('Loading reader… (first time takes a few seconds)');
+      setStatus('Loading reader…');
+      // Served from public/tesseract so scanning works offline (default is the jsdelivr CDN).
+      // Absolute URLs because the worker runs from a blob: URL where relative paths don't resolve.
+      const base = `${location.origin}/tesseract`;
       const worker = await createWorker('eng', 1, {
+        workerPath: `${base}/worker.min.js`,
+        corePath: `${base}/core`,
+        langPath: `${base}/lang`,
         logger: m => {
           if (m.status === 'recognizing text') {
             setStatus('Reading receipt…');
@@ -118,13 +124,9 @@ export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
       setOcrText(data.text);
 
       setStatus('Adding it up…');
-      const res = await fetch('/api/parse-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: data.text }),
-      });
-      const r = await res.json();
-      if (!res.ok || r.error) throw new Error('parse');
+      // Runs in the browser, so scanning works offline in the app
+      const { parseReceipt } = await import('@/lib/engine');
+      const r = await parseReceipt(data.text);
 
       if (!(r.total > 0)) {
         setError("I couldn't find a total on this receipt. Try a sharper photo with the TOTAL line visible, or log it by hand.");
@@ -140,7 +142,7 @@ export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
       setSplit(false);
       setStage('review');
     } catch {
-      setError('Something went wrong reading the photo. Check your internet (the reader downloads once) and try again.');
+      setError('Something went wrong reading the photo. Try again, or log it by hand.');
       setStage('idle');
     }
   };

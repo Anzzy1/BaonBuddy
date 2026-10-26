@@ -5,6 +5,7 @@ import Icon from '@/components/Icon';
 import ExpenseRow from '@/components/ExpenseRow';
 import Mascot from '@/components/Mascot';
 import { AppState, Computed, dayLabel, groupByDay, newestFirst, pesoR, shortDate } from '@/lib/budget';
+import { feedbackMessage } from '@/lib/feedback';
 import type { TabId } from '@/components/Sidebar';
 
 interface OverviewTabProps {
@@ -20,21 +21,14 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
   const [aiLoading, setAiLoading] = useState(false);
   const [displayedMsg, setDisplayedMsg] = useState('');
 
-  // Fetch Buddy feedback on state change
+  // Build Buddy feedback on state change (runs fully offline in the app)
   useEffect(() => {
-    const ctrl = new AbortController();
     setAiLoading(true);
-    fetch('/api/feedback', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ budget: state.budget, start: state.start, end: state.end, expenses: state.expenses, prev: aiMsg }),
-      signal: ctrl.signal,
-    })
-      .then(r => r.json())
-      .then(d => setAiMsg(d.msg))
-      .catch(() => {})
-      .finally(() => setAiLoading(false));
-    return () => ctrl.abort();
+    const t = setTimeout(() => {
+      setAiMsg(prev => feedbackMessage(state, prev));
+      setAiLoading(false);
+    }, 350);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.budget, state.start, state.end, state.expenses]);
 

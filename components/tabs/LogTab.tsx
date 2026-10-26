@@ -5,6 +5,7 @@ import Icon from '@/components/Icon';
 import ExpenseRow from '@/components/ExpenseRow';
 import { AppState, CATS, Computed, Expense, addDays, catById, cleanAmount, dayLabel, iso, newestFirst, peso, pesoR, today, uid } from '@/lib/budget';
 import type { Lang } from '@/lib/parseExpense';
+import { parseExpense } from '@/lib/engine';
 import { SPEECH_ERRORS, useSpeech } from '@/components/useSpeech';
 import ReceiptScanner from '@/components/ReceiptScanner';
 
@@ -144,12 +145,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
     try {
       let data = null;
       for (const g of guesses) {
-        const res = await fetch('/api/parse-expense', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: g }),
-        });
-        const d = await res.json();
+        const d = await parseExpense(g);
         data ??= d;
         // Speech can mishear; use the first guess the parser actually understands
         if (d.action && d.action !== 'none') {
