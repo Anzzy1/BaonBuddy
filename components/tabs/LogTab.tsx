@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Icon from '@/components/Icon';
+import CatIcon from '@/components/CatIcon';
 import ExpenseRow from '@/components/ExpenseRow';
-import { AppState, CATS, Computed, Expense, addDays, catById, cleanAmount, dayLabel, iso, newestFirst, peso, pesoR, today, uid } from '@/lib/budget';
-import type { Lang } from '@/lib/parseExpense';
+import { AppState, Computed, activeCats, Expense, addDays, catById, catName, cleanAmount, dayLabel, iso, langOf, newestFirst, peso, pesoR, today, uid } from '@/lib/budget';
+import { perDayText, translator } from '@/lib/i18n';
 import { parseExpense } from '@/lib/engine';
 import { SPEECH_ERRORS, useSpeech } from '@/components/useSpeech';
 import ReceiptScanner from '@/components/ReceiptScanner';
@@ -16,14 +17,15 @@ interface LogTabProps {
   onAdd: (e: Expense | Expense[]) => void;
   onDelete: (id: string) => void;
   showToast: (text: string) => void;
+  update: (fn: (prev: AppState) => AppState) => void;
 }
 
 type ChatMsg = { role: 'user' | 'assistant'; text: string; voice?: boolean };
 type Item = { amount: number; category: string; note: string; daysAgo: number };
 
 const VOICE_LANGS = [
-  { id: 'en-PH', label: 'English / Taglish' },
-  { id: 'fil-PH', label: 'Tagalog' },
+  { id: 'en-PH', label: 'English' },
+  { id: 'fil-PH', label: 'Filipino' },
 ] as const;
 
 const readPref = (key: string, fallback: string) => {
@@ -33,9 +35,9 @@ const writePref = (key: string, value: string) => {
   try { localStorage.setItem(key, value); } catch {}
 };
 
-export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: LogTabProps) {
+export default function LogTab({ state, c, newId, onAdd, onDelete, showToast, update }: LogTabProps) {
   const [mode, setMode] = useState<'manual' | 'chat' | 'voice' | 'scan'>('manual');
-  const [selectedCat, setSelectedCat] = useState('food');
+  const [selectedCat, setSelectedCat] = useState(() => activeCats(state)[0].id);
   const [amount, setAmount] = useState('');
   const [dateIn, setDateIn] = useState(today());
   const [note, setNote] = useState('');
@@ -43,12 +45,16 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
   const [chatLoading, setChatLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [voiceLang, setVoiceLang] = useState('en-PH');
+  const [editFavs, setEditFavs] = useState(false);
+  const favorites = state.favorites || [];
 
   const amountRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setVoiceLang(readPref('balanse.voiceLang', 'en-PH'));
+    // Tagalog and Taglish speakers get the Filipino recognizer unless they picked one
+    setVoiceLang(readPref('balanse.voiceLang', langOf(state) === 'en' ? 'en-PH' : 'fil-PH'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep the newest message in view inside the thread box, without scrolling the page
@@ -79,37 +85,52 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
     document.getElementById('amount')?.focus();
   };
 
-  // Turns a parser result into actions plus a reply in the person's language
-  const respond = (data: { action?: string; lang?: string; items?: Item[] }): string => {
-    const lang: Lang = data.lang === 'tl' ? 'tl' : 'en';
-    const say = (en: string, tl: string) => (lang === 'tl' ? tl : en);
+  // One tap logs a saved expense for today
+  const logFavorite = (f: (typeof favorites)[number]) => {
+    onAdd({ id: uid(), amount: f.amount, cat: f.cat, date: today(), note: f.note, ts: Date.now() });
+  };
+  const saveFavorite = () => {
+    const amt = parseFloat(amount);
+    if (!(amt > 0)) { showToast('Enter an amount first, then save it as a quick add.'); return; }
+    if (favorites.length >= 8) { showToast('You can keep up to 8 quick adds. Remove one first.'); return; }
+    const f = { id: uid(), amount: Math.round(amt * 100) / 100, cat: selectedCat, note: note.trim() || catById(selectedCat).label };
+    update(prev => ({ ...prev, favorites: [...(prev.favorites || []), f] }));
+    showToast(`Saved “${f.note}” as a quick add`);
+  };
+
+  // Turns a parser result into actions plus a reply
+  const respond = (data: { action?: string; items?: Item[] }): string => {
+    const lang = langOf(state);
+    const t = translator(lang);
 
     if (data.action === 'remove') {
       const last = [...state.expenses].sort((a, b) => b.ts - a.ts)[0];
-      if (!last) return say("There's nothing logged yet.", 'Wala pang naka-log na gastos.');
+      if (!last) return t("There's nothing logged yet.", 'Wala ka pang naitalang gastos.', 'Wala ka pang na-log.');
       onDelete(last.id);
-      const what = `${peso(last.amount)} ${last.note || catById(last.cat).label}`;
-      return say(`Removed ${what}.`, `Sige, binura ko na yung ${what}.`);
+      const what = `${peso(last.amount)} ${last.note || catName(last.cat, lang)}`;
+      return t(`Removed ${what}.`, `Tinanggal ang ${what}.`, `Tinanggal ang ${what}.`);
     }
 
     if (data.action === 'query') {
       const spentToday = state.expenses.filter(x => x.date === today()).reduce((s, x) => s + x.amount, 0);
-      const left = c.remaining < 0 ? `${pesoR(-c.remaining)} over budget` : `${pesoR(c.remaining)} left`;
-      const leftTl = c.remaining < 0 ? `lampas ka ng ${pesoR(-c.remaining)}` : `may ${pesoR(c.remaining)} ka pa`;
-      return say(
-        `You've spent ${peso(spentToday)} today and ${pesoR(c.spent)} this period. You have ${left}, about ${pesoR(c.perDay)}/day.`,
-        `Nakagastos ka ng ${peso(spentToday)} ngayon at ${pesoR(c.spent)} this period. ${leftTl[0].toUpperCase() + leftTl.slice(1)}, mga ${pesoR(c.perDay)}/day.`,
-      );
+      const pd = perDayText(pesoR(c.perDay), lang);
+      if (c.remaining < 0) {
+        return t(`You've spent ${peso(spentToday)} today and ${pesoR(c.spent)} this period. You're ${pesoR(-c.remaining)} over budget.`,
+                 `Nakagastos ka ng ${peso(spentToday)} ngayon at ${pesoR(c.spent)} ngayong period. Lampas ka na ng ${pesoR(-c.remaining)} sa badyet.`,
+                 `Naka-${peso(spentToday)} ka today at ${pesoR(c.spent)} this period. Over budget ka na ng ${pesoR(-c.remaining)}.`);
+      }
+      return t(`You've spent ${peso(spentToday)} today and ${pesoR(c.spent)} this period. You have ${pesoR(c.remaining)} left, about ${pd}.`,
+               `Nakagastos ka ng ${peso(spentToday)} ngayon at ${pesoR(c.spent)} ngayong period. May natitira ka pang ${pesoR(c.remaining)}, mga ${pd}.`,
+               `Naka-${peso(spentToday)} ka today at ${pesoR(c.spent)} this period. May ${pesoR(c.remaining)} ka pa, mga ${pd}.`);
     }
 
     const items: Item[] = (data.action === 'add' && Array.isArray(data.items) ? data.items : [])
       .map(it => ({ ...it, amount: Math.round(Number(it.amount) * 100) / 100 }))
       .filter(it => Number.isFinite(it.amount) && it.amount > 0);
     if (!items.length) {
-      return say(
-        'I couldn\'t find an amount there. Try something like "lunch 85", "I paid 26 pesos for jeep" or "2 siomai at 15 each".',
-        'Di ko nakita yung amount. Try mo: "siomai rice 85", "nag-jeep ako 26 pesos" o "3 siomai tig 15".',
-      );
+      return t('I couldn\'t find an amount there. Try something like "lunch 85", "I paid 26 pesos for the bus" or "2 sandwiches at 45 each".',
+               'Wala akong nakitang halaga riyan. Subukan ang "tanghalian 85", "nagbayad ako ng 26 sa jeep" o "2 tinapay tig-15".',
+               'Wala akong nakitang amount diyan. Try mo ang "lunch 85", "nagbayad ako ng 26 sa jeep" or "2 sandwich tig-45".');
     }
 
     const exps: Expense[] = items.map((it, i) => ({
@@ -124,15 +145,16 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
 
     const added = exps.filter(x => x.date >= state.start && x.date <= state.end).reduce((s, x) => s + x.amount, 0);
     const remaining = c.remaining - added;
-    const when = (x: Expense) => (x.date === today() ? '' : lang === 'tl' ? ` (${dayLabel(x.date) === 'Yesterday' ? 'kahapon' : dayLabel(x.date)})` : ` (${dayLabel(x.date).toLowerCase()})`);
-    const lines = exps.map(x => `• ${peso(x.amount)} ${x.note || catById(x.cat).label} → ${catById(x.cat).label}${when(x)}`).join('\n');
+    const when = (x: Expense) => (x.date === today() ? '' : ` (${dayLabel(x.date, lang).toLowerCase()})`);
+    const lines = exps.map(x => `• ${peso(x.amount)} ${x.note || catName(x.cat, lang)} → ${catName(x.cat, lang)}${when(x)}`).join('\n');
     const total = exps.length > 1 ? peso(exps.reduce((s, x) => s + x.amount, 0)) : '';
-    const leftEn = remaining < 0 ? `You're ${pesoR(-remaining)} over budget.` : `${pesoR(remaining)} left.`;
-    const leftTl = remaining < 0 ? `Lampas ka na ng ${pesoR(-remaining)}.` : `May ${pesoR(remaining)} ka pa.`;
-    return say(
-      `Got it! Logged ${exps.length > 1 ? `${exps.length} items (${total})` : 'it'}:\n${lines}\n${leftEn}`,
-      `Sige! Na-log ko ${exps.length > 1 ? `ang ${exps.length} items (${total})` : 'na'}:\n${lines}\n${leftTl}`,
-    );
+    const leftLine = remaining < 0
+      ? t(`You're ${pesoR(-remaining)} over budget.`, `Lampas ka na ng ${pesoR(-remaining)} sa badyet.`, `Over budget ka na ng ${pesoR(-remaining)}.`)
+      : t(`${pesoR(remaining)} left.`, `${pesoR(remaining)} pa ang natitira.`, `${pesoR(remaining)} pa ang natitira.`);
+    const head = exps.length > 1
+      ? t(`Got it! Logged ${exps.length} items (${total}):`, `Sige! Naitala ang ${exps.length} na gastos (${total}):`, `Got it! Na-log ang ${exps.length} items (${total}):`)
+      : t('Got it! Logged it:', 'Sige! Naitala na:', 'Got it! Na-log na:');
+    return `${head}\n${lines}\n${leftLine}`;
   };
 
   // Sends one message (or several speech guesses, best first) and logs whatever it understood
@@ -156,7 +178,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
       }
       reply = respond(data || {});
     } catch {
-      reply = 'Something went wrong, please try again. / May error, try mo ulit.';
+      reply = translator(langOf(state))('Something went wrong. Please try again.', 'May nagkaproblema. Pakisubukang muli.', 'May error. Try ulit.');
     }
     setChatMessages(prev => [...prev, { role: 'assistant', text: reply }]);
     setChatLoading(false);
@@ -213,7 +235,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
       <section id="logger" className="glass reveal p-6 lg:col-span-7 self-start" aria-label="Log an expense">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--lime)]"><Icon name="pen-line" /></span>Log gastos</h2>
+          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--lime)]"><Icon name="pen-line" /></span>Log expense</h2>
           <span className="hidden sm:inline-flex items-center gap-1.5 text-xs text-muted">Press <span className="kbd">N</span> anywhere</span>
         </div>
         <div className="mt-4 seg max-w-full overflow-x-auto no-scrollbar">
@@ -232,20 +254,20 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
           </button>
         </div>
 
-        {mode === 'scan' && <ReceiptScanner onAdd={onAdd} />}
+        {mode === 'scan' && <ReceiptScanner onAdd={onAdd} cats={activeCats(state)} />}
 
         {mode === 'chat' && (
           <div className="mt-4 flex flex-col" style={{ maxHeight: 460 }}>
             <div className="flex-1 overflow-y-auto no-scrollbar pr-1 -mr-1" style={{ minHeight: 160 }}>
               {chatMessages.length === 0 && (
                 <div className="rounded-xl p-4 bg-[var(--soft)] border border-[var(--hair)]">
-                  <p className="text-sm font-medium">Just tell me what you spent, in English or Taglish</p>
+                  <p className="text-sm font-medium">Just tell me what you spent</p>
                   <p className="text-[13px] mt-1 leading-relaxed text-muted">
-                    &quot;I bought food for 50 pesos&quot;, &quot;jeep 26 and lunch 120&quot;, &quot;3 siomai tig 15 kahapon&quot;.
+                    &quot;I bought food for 50 pesos&quot;, &quot;bus 26 and lunch 120&quot;, &quot;3 sandwiches at 45 each yesterday&quot;.
                     Ask &quot;how much did I spend?&quot; or say &quot;undo&quot; to remove the last one.
                   </p>
                   <div className="flex gap-2 flex-wrap mt-3">
-                    {['I bought food for 50 pesos', 'jeep 26 and lunch 120', 'nagpaload ako ng 50 kahapon'].map(s => (
+                    {['I bought food for 50 pesos', 'bus 26 and lunch 120', 'mobile load 50 yesterday'].map(s => (
                       <button key={s} type="button" className="pill sm plus" onClick={() => setChatInput(s)}>{s}</button>
                     ))}
                   </div>
@@ -255,7 +277,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
             </div>
 
             <form onSubmit={handleChatSubmit} className="mt-3" autoComplete="off">
-              <ChatInput value={chatInput} onChange={setChatInput} disabled={chatLoading} placeholder="What did you spend on? / Ano ginastos mo?" />
+              <ChatInput value={chatInput} onChange={setChatInput} disabled={chatLoading} placeholder="What did you spend on?" />
             </form>
           </div>
         )}
@@ -295,7 +317,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
                       ? 'Speak now. It stops by itself when you pause.'
                       : speech.phase === 'loading'
                         ? `Getting voice ready${speech.loadPct !== null ? ` · ${speech.loadPct}%` : ''}… (first time only)`
-                        : '“I bought bread for 10 pesos” · “jeep 26 tapos lunch 120”'}
+                        : '“I bought bread for 10 pesos” · “bus 26 and lunch 120”'}
                   </p>
                   <span className="chip mt-3 !bg-[var(--soft)] !h-6 !text-[11px]">
                     <Icon name="wifi-off" className="w-3 h-3" /> Works offline
@@ -326,6 +348,32 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
 
         {mode === 'manual' && (
           <form onSubmit={handleSubmit} className="mt-4" noValidate autoComplete="off">
+            {favorites.length > 0 && (
+              <div className="mb-4">
+                <div className="field-label">
+                  <span>Quick add</span>
+                  <button type="button" className="text-[12px] font-medium text-muted" onClick={() => setEditFavs(v => !v)}>{editFavs ? 'Done' : 'Edit'}</button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+                  {favorites.map(f => (
+                    <span key={f.id} className="fav" style={{ '--c': catById(f.cat).color } as React.CSSProperties}>
+                      <button type="button" className="fav-main" onClick={() => (editFavs ? null : logFavorite(f))} disabled={editFavs} aria-label={`Log ${f.note} for ${peso(f.amount)}`}>
+                        <span className="ic"><CatIcon id={f.cat} /></span>
+                        <span className="text-left">
+                          <span className="block text-[13px] font-semibold leading-tight max-w-[9rem] truncate">{f.note}</span>
+                          <span className="block text-[12px] text-muted tnum">{pesoR(f.amount)}</span>
+                        </span>
+                      </button>
+                      {editFavs && (
+                        <button type="button" className="fav-x" aria-label={`Remove ${f.note}`} onClick={() => update(prev => ({ ...prev, favorites: (prev.favorites || []).filter(x => x.id !== f.id) }))}>
+                          <Icon name="x" />
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
             <div ref={amountRef} className="amount-field" onClick={() => document.getElementById('amount')?.focus()}>
               <span className="peso">₱</span>
               <input id="amount" inputMode="decimal" placeholder="0" aria-label="Amount in pesos" value={amount} onChange={e => setAmount(cleanAmount(e.target.value))} />
@@ -340,7 +388,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
 
             <p className="field-label mt-5">Category</p>
             <div className="grid grid-cols-3 gap-2" role="group" aria-label="Category">
-              {CATS.map(cat => (
+              {activeCats(state).map(cat => (
                 <button
                   key={cat.id}
                   type="button"
@@ -349,7 +397,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
                   aria-pressed={selectedCat === cat.id}
                   onClick={() => setSelectedCat(cat.id)}
                 >
-                  <span className="ic"><Icon name={cat.icon} /></span>
+                  <span className="ic"><CatIcon id={cat.id} /></span>
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -368,7 +416,7 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
               </div>
               <div>
                 <label className="field-label" htmlFor="note"><span>Note</span><span className="opacity-70 h-[30px] inline-flex items-center">Optional</span></label>
-                <input id="note" className="input" maxLength={60} placeholder="Siomai rice sa canteen" value={note} onChange={e => setNote(e.target.value)} />
+                <input id="note" className="input" maxLength={60} placeholder="Lunch at the canteen" value={note} onChange={e => setNote(e.target.value)} />
               </div>
             </div>
 
@@ -376,13 +424,16 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
               <span className="badge"><Icon name="plus" /></span>
               <span>Log expense</span>
             </button>
+            <button type="button" className="pill sm mt-3 mx-auto flex" onClick={saveFavorite}>
+              <Icon name="sparkles" className="w-3.5 h-3.5" />Save as quick add
+            </button>
           </form>
         )}
       </section>
 
       <section className="glass reveal p-4 sm:p-6 lg:col-span-5 self-start" style={{ '--d': '.08s' } as React.CSSProperties} aria-label="Logged today">
         <div className="px-2 sm:px-0">
-          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="receipt" /></span>Ngayong araw</h2>
+          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="receipt" /></span>Today</h2>
           <p className="text-sm text-muted mt-2">{todays.length} {todays.length === 1 ? 'entry' : 'entries'} today, {peso(todayTotal)} spent</p>
         </div>
         <div className="grid grid-cols-2 gap-2 mt-4 px-2 sm:px-0">
@@ -391,13 +442,13 @@ export default function LogTab({ state, c, newId, onAdd, onDelete, showToast }: 
             <p className="font-display font-extrabold text-xl tracking-tight tnum mt-1">{pesoR(safeToday)}</p>
           </div>
           <div className={`result ${overToday ? 'bad' : 'good'}`}>
-            <p className="eyebrow">{overToday ? 'Lampas today' : 'Natitira today'}</p>
+            <p className="eyebrow">{overToday ? 'Over today' : 'Left today'}</p>
             <p className="font-display font-extrabold text-xl tracking-tight tnum mt-1">{pesoR(safeToday - todayTotal)}</p>
           </div>
         </div>
         <div className="mt-2">
           {todays.length === 0 ? (
-            <p className="text-sm text-muted text-center py-10">Wala pang gastos ngayon. Nice!</p>
+            <p className="text-sm text-muted text-center py-10">No expenses today. Nice!</p>
           ) : (
             todays.map(e => <ExpenseRow key={e.id} e={e} isNew={e.id === newId} onDelete={onDelete} />)
           )}

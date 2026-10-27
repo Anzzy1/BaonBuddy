@@ -18,9 +18,17 @@ const config: CapacitorConfig = {
     // The page handles the notch/home-indicator insets itself via
     // viewport-fit=cover + env(safe-area-inset-*) in globals.css.
     contentInset: 'never',
-    backgroundColor: '#FFFFFF',
+    // Matches the iOS shell's grouped background (app/ios.css) so rubber-band
+    // overscroll doesn't flash white. Long-press link previews feel un-app-like.
+    backgroundColor: '#F2F2F7',
+    allowsLinkPreview: false,
   },
   plugins: {
+    LocalNotifications: {
+      // White glyph in res/drawable; Android tints it with iconColor
+      smallIcon: 'ic_stat_baonbuddy',
+      iconColor: '#3A4BFF',
+    },
     SystemBars: {
       // Light bars (dark icons) to match the white UI, inset handling in CSS so
       // the web layout can use the same safe-area variables on Android and iOS.

@@ -8,6 +8,7 @@ import type { ParsedReceipt } from '@/lib/parseReceipt';
 
 interface ReceiptScannerProps {
   onAdd: (e: Expense | Expense[]) => void;
+  cats?: typeof CATS;
 }
 
 type Stage = 'idle' | 'camera' | 'reading' | 'review';
@@ -53,7 +54,7 @@ async function prepareImage(file: File): Promise<HTMLCanvasElement> {
   }
 }
 
-export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
+export default function ReceiptScanner({ onAdd, cats = CATS }: ReceiptScannerProps) {
   const [stage, setStage] = useState<Stage>('idle');
   const [preview, setPreview] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
@@ -64,7 +65,7 @@ export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
   const [store, setStore] = useState('');
   const [total, setTotal] = useState('');
   const [date, setDate] = useState(today());
-  const [cat, setCat] = useState('food');
+  const [cat, setCat] = useState(cats[0].id);
   const [split, setSplit] = useState(false);
   const [items, setItems] = useState<EditItem[]>([]);
   const [done, setDone] = useState<string | null>(null);
@@ -259,7 +260,7 @@ export default function ReceiptScanner({ onAdd }: ReceiptScannerProps) {
                 <input inputMode="decimal" aria-label="Total paid" value={total} onChange={e => setTotal(cleanAmount(e.target.value))} />
               </div>
               <div className="flex gap-2 overflow-x-auto no-scrollbar mt-3" role="group" aria-label="Category">
-                {CATS.map(x => (
+                {cats.map(x => (
                   <button key={x.id} type="button" className="pill sm" aria-pressed={cat === x.id} onClick={() => setCat(x.id)}>{x.label}</button>
                 ))}
               </div>

@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import Icon from '@/components/Icon';
+import CatIcon from '@/components/CatIcon';
 import ExpenseRow from '@/components/ExpenseRow';
-import { AppState, CATS, Expense, catById, cleanAmount, dayLabel, groupByDay, newestFirst, peso, today, weekRange } from '@/lib/budget';
+import { AppState, CATS, Expense, activeCats, catById, cleanAmount, dayLabel, groupByDay, newestFirst, peso, today, weekRange } from '@/lib/budget';
 
 interface ManageTabProps {
   state: AppState;
@@ -72,7 +73,7 @@ export default function ManageTab({ state, newId, onUpdate, onDelete }: ManageTa
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `gastos-${today()}.csv`;
+    a.download = `expenses-${today()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -81,15 +82,15 @@ export default function ManageTab({ state, newId, onUpdate, onDelete }: ManageTa
     <div className="grid grid-cols-1 gap-4">
       {/* Summary */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 reveal">
-        <Stat label="Total shown" value={peso(total)} sub={`${list.length} ${list.length === 1 ? 'entry' : 'entries'}`} color="var(--lavender)" />
-        <Stat label="Avg per entry" value={peso(list.length ? total / list.length : 0)} sub="per gastos" color="var(--peach)" />
-        <Stat label="Avg per day" value={peso(days ? total / days : 0)} sub={`${days} active ${days === 1 ? 'day' : 'days'}`} color="var(--sky)" />
-        <Stat label="Biggest" value={biggest ? peso(biggest.amount) : '—'} sub={biggest ? biggest.note || catById(biggest.cat).label : 'Nothing yet'} color="var(--pink)" />
+        <Stat label="Total shown" value={peso(total)} sub={`${list.length} ${list.length === 1 ? 'entry' : 'entries'}`} icon="wallet" accent="#4C6EF5" />
+        <Stat label="Avg per entry" value={peso(list.length ? total / list.length : 0)} sub="per expense" icon="receipt" accent="#E8743B" />
+        <Stat label="Avg per day" value={peso(days ? total / days : 0)} sub={`${days} active ${days === 1 ? 'day' : 'days'}`} icon="calendar" accent="#2E9E8F" />
+        <Stat label="Biggest" value={biggest ? peso(biggest.amount) : '—'} sub={biggest ? biggest.note || catById(biggest.cat).label : 'Nothing yet'} icon="trending-up" accent="#D9536F" />
       </section>
 
       <section className="glass reveal p-4 sm:p-6" style={{ '--d': '.05s' } as React.CSSProperties} aria-label="Manage expenses">
         <div className="flex flex-wrap items-center justify-between gap-3 px-2 sm:px-0">
-          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="list-checks" /></span>Manage gastos</h2>
+          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="list-checks" /></span>Manage expenses</h2>
           <button type="button" className="pill sm plus" onClick={exportCsv} disabled={!list.length}>
             <Icon name="download" className="w-3.5 h-3.5" />Export CSV
           </button>
@@ -114,7 +115,7 @@ export default function ManageTab({ state, newId, onUpdate, onDelete }: ManageTa
             </label>
           </div>
           <div className="flex gap-2 overflow-x-auto no-scrollbar" role="group" aria-label="Filter by category">
-            {[{ id: 'all', label: 'All' }, ...CATS].map(f => {
+            {[{ id: 'all', label: 'All' }, ...CATS.filter(x => activeCats(state).includes(x) || inRange.some(e => e.cat === x.id))].map(f => {
               const n = f.id === 'all' ? inRange.length : inRange.filter(e => e.cat === f.id).length;
               return (
                 <button key={f.id} type="button" className="pill sm" aria-pressed={cat === f.id} onClick={() => setCat(f.id)}>
@@ -131,7 +132,7 @@ export default function ManageTab({ state, newId, onUpdate, onDelete }: ManageTa
               <div className="mx-auto w-14 h-14 rounded-2xl grid place-items-center bg-[var(--lime)] text-[#0E0E10] mb-4 rotate-6">
                 <Icon name="search" />
               </div>
-              <p className="font-display font-bold text-xl tracking-tight">Walang nahanap</p>
+              <p className="font-display font-bold text-xl tracking-tight">No results</p>
               <p className="text-sm text-muted mt-1">Try another filter or date range.</p>
             </div>
           ) : byDate ? (
@@ -156,22 +157,23 @@ export default function ManageTab({ state, newId, onUpdate, onDelete }: ManageTa
         </div>
       </section>
 
-      {editing && <EditDialog expense={editing} onClose={() => setEditing(null)} onSave={e => { onUpdate(e); setEditing(null); }} />}
+      {editing && <EditDialog expense={editing} cats={CATS.filter(x => activeCats(state).includes(x) || x.id === editing.cat)} onClose={() => setEditing(null)} onSave={e => { onUpdate(e); setEditing(null); }} />}
     </div>
   );
 }
 
-function Stat({ label, value, sub, color }: { label: string; value: string; sub: string; color: string }) {
+function Stat({ label, value, sub, icon, accent }: { label: string; value: string; sub: string; icon: string; accent: string }) {
   return (
-    <div className="tile" style={{ '--t': color } as React.CSSProperties}>
-      <span className="eyebrow">{label}</span>
-      <span className="tile-val tnum">{value}</span>
-      <span className="tile-sub">{sub}</span>
+    <div className="stat-card" style={{ '--a': accent } as React.CSSProperties}>
+      <span className="stat-ic"><Icon name={icon} /></span>
+      <span className="stat-label">{label}</span>
+      <span className="stat-val tnum">{value}</span>
+      <span className="stat-sub">{sub}</span>
     </div>
   );
 }
 
-function EditDialog({ expense, onClose, onSave }: { expense: Expense; onClose: () => void; onSave: (e: Expense) => void }) {
+function EditDialog({ expense, cats, onClose, onSave }: { expense: Expense; cats: typeof CATS; onClose: () => void; onSave: (e: Expense) => void }) {
   const [amount, setAmount] = useState(String(expense.amount));
   const [cat, setCat] = useState(expense.cat);
   const [date, setDate] = useState(expense.date);
@@ -191,8 +193,8 @@ function EditDialog({ expense, onClose, onSave }: { expense: Expense; onClose: (
       <form onSubmit={submit} className="sheet" noValidate>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="card-title">Edit gastos</h3>
-            <p className="text-sm text-muted mt-1">Ayusin ang amount, category, date o note.</p>
+            <h3 className="card-title">Edit expense</h3>
+            <p className="text-sm text-muted mt-1">Update the amount, category, date or note.</p>
           </div>
           <button type="button" className="icon-btn shrink-0" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
         </div>
@@ -203,9 +205,9 @@ function EditDialog({ expense, onClose, onSave }: { expense: Expense; onClose: (
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-4" role="group" aria-label="Category">
-          {CATS.map(c => (
+          {cats.map(c => (
             <button key={c.id} type="button" className="cat !gap-2 !p-2.5" style={{ '--c': c.color, '--g': c.grad } as React.CSSProperties} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>
-              <span className="ic !w-8 !h-8"><Icon name={c.icon} /></span>
+              <span className="ic !w-8 !h-8"><CatIcon id={c.id} /></span>
               <span className="text-[12px]">{c.label}</span>
             </button>
           ))}

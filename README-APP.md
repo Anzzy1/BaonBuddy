@@ -62,6 +62,18 @@ GitHub Actions workflow that builds the `.ipa` on a free cloud Mac, and the resu
 and installed from Windows with **Sideloadly** and your Apple ID. No App Store, no $99 fee
 required for personal use.
 
+### iOS look (Liquid Glass)
+
+The iOS app has its own iOS 26 style shell, separate from the Android/Windows UI:
+a floating Liquid Glass tab bar with a lens you can tap or drag between tabs (it slims
+while scrolling down), a round glass **+** button for logging, large titles that collapse
+into the nav bar, glass toolbar buttons, bottom sheets with a grabber, and haptic
+taps via `@capacitor/haptics`. It switches on automatically when running on iOS
+(`lib/platform.ts`), styled by `app/ios.css` and `components/ios/IOSChrome.tsx`.
+
+Preview it in a browser with `npm run dev` → `http://localhost:3000/?ui=ios`
+(`?ui=default` switches back).
+
 ### 1. Cloud-build the IPA
 
 1. Push this project to GitHub (the `ios/` folder must be included).

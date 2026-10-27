@@ -5,7 +5,7 @@ import Icon from '@/components/Icon';
 import Mascot from '@/components/Mascot';
 
 // Buddy pops in after every new log and reacts to it, typing the message out
-export default function BuddyPop({ msg, onClose, onChat }: { msg: { text: string; key: number } | null; onClose: () => void; onChat: () => void }) {
+export default function BuddyPop({ msg, avatar, onClose, onChat }: { msg: { text: string; key: number } | null; avatar?: string; onClose: () => void; onChat: () => void }) {
   const [shown, setShown] = useState('');
   const [hover, setHover] = useState(false);
   const text = msg?.text ?? '';
@@ -38,7 +38,7 @@ export default function BuddyPop({ msg, onClose, onChat }: { msg: { text: string
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      <Mascot size={56} waving={!!msg && typing && shown.length < 12} talking={typing} />
+      <Mascot size={56} waving={!!msg && typing && shown.length < 12} talking={typing} avatar={avatar} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <p className="font-display font-extrabold text-[15px] tracking-tight leading-none">Buddy</p>

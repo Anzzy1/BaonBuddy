@@ -39,12 +39,12 @@ const STORES: [RegExp, string, string][] = [
   [/sm\s*(supermarket|hypermarket|markets)/i, 'SM Supermarket', 'food'],
   [/national\s*book/i, 'National Book Store', 'school'],
   [/expressions/i, 'Expressions', 'school'],
-  [/mercury\s*drug/i, 'Mercury Drug', 'other'],
-  [/watsons/i, 'Watsons', 'other'],
-  [/the\s*generics/i, 'The Generics Pharmacy', 'other'],
+  [/mercury\s*drug/i, 'Mercury Drug', 'health'],
+  [/watsons/i, 'Watsons', 'personal'],
+  [/the\s*generics/i, 'The Generics Pharmacy', 'health'],
   [/petron|shell|caltex|seaoil|phoenix/i, 'Gas station', 'transpo'],
   [/sm\s*cinema|ayala\s*cinema|cinema/i, 'Cinema', 'gala'],
-  [/timezone|tom'?s\s*world/i, 'Arcade', 'gala'],
+  [/timezone|tom'?s\s*world/i, 'Arcade', 'games'],
 ];
 
 // Lines that carry money but are not purchased items

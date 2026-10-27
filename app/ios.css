@@ -1,0 +1,211 @@
+/* iOS 26 shell. Only active when <html data-ui="ios"> (the iOS app, or ?ui=ios
+   in a browser). Unlayered on purpose so it wins over globals.css components. */
+
+:root[data-ui="ios"] {
+  --tint: var(--cobalt);
+  --ios-bg: #F2F2F7;
+  --ios-fill: rgba(118, 118, 128, .12);
+  --ios-label-2: rgba(60, 60, 67, .6);
+  --ios-sheet: cubic-bezier(.32, .72, 0, 1);
+  --tab-bottom: calc(max(var(--safe-bottom), 20px) - 6px);
+  -webkit-tap-highlight-color: transparent;
+}
+
+:root[data-ui="ios"] body {
+  --font-sans: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --font-display: -apple-system, "SF Pro Display", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", monospace;
+  background: var(--ios-bg);
+  padding-top: 0;
+  letter-spacing: -.01em;
+}
+:root[data-ui="ios"] button { -webkit-touch-callout: none; touch-action: manipulation; }
+
+/* ---------- Liquid Glass material ---------- */
+:root[data-ui="ios"] .lg {
+  position: relative; isolation: isolate; user-select: none; -webkit-user-select: none;
+  background: rgba(255, 255, 255, .58);
+  -webkit-backdrop-filter: blur(14px) saturate(190%) brightness(1.04);
+  backdrop-filter: blur(14px) saturate(190%) brightness(1.04);
+  box-shadow:
+    inset 0 0 0 .5px rgba(255, 255, 255, .75),
+    inset 0 1.5px 1px rgba(255, 255, 255, .95),
+    inset 0 -1px 1.5px rgba(0, 0, 0, .05),
+    0 0 0 .5px rgba(0, 0, 0, .07),
+    0 10px 30px -10px rgba(0, 0, 0, .22);
+}
+/* Specular sheen across the top edge */
+:root[data-ui="ios"] .lg::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  background:
+    radial-gradient(120% 70% at 20% 0%, rgba(255, 255, 255, .55), transparent 55%),
+    linear-gradient(to top, rgba(255, 255, 255, .25), transparent 35%);
+  mix-blend-mode: soft-light;
+}
+
+/* ---------- Floating tab bar ---------- */
+.ios-tabs {
+  position: fixed; z-index: 45; left: 0; right: 0; bottom: var(--tab-bottom);
+  width: min(calc(100% - 32px), 500px); margin: 0 auto;
+  display: flex; align-items: flex-end; gap: 10px;
+  transition: bottom .4s var(--ios-sheet);
+}
+.lg-bar {
+  flex: 1; height: 62px; padding: 4px; border-radius: 999px;
+  display: grid; grid-template-columns: repeat(4, 1fr); touch-action: none;
+  transition: height .45s var(--ios-sheet);
+}
+.lg-lens {
+  position: absolute; z-index: 0; top: 4px; bottom: 4px; left: 4px; width: calc((100% - 8px) / 4);
+  border-radius: 999px; background: rgba(118, 118, 128, .14);
+  transition: transform .55s var(--spring), opacity .25s, background .2s, box-shadow .2s;
+}
+.lg-lens.is-off { opacity: 0; }
+/* While dragging, the lens lifts off the bar and magnifies */
+.lg-bar.is-drag .lg-lens {
+  background: rgba(255, 255, 255, .55);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .9), inset 0 1px 1px #fff, 0 6px 18px -6px rgba(0, 0, 0, .25);
+}
+.lg-bar button {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 999px; color: #1C1C1E; font-size: 10px; font-weight: 600; letter-spacing: .01em;
+  transition: color .2s, transform .35s var(--spring);
+}
+.lg-bar button svg { width: 23px; height: 23px; stroke-width: 2; transition: transform .35s var(--spring); }
+.lg-bar button span { line-height: 1.1; transition: opacity .2s, max-height .3s var(--ios-sheet); max-height: 14px; }
+.lg-bar button[aria-current="page"] { color: var(--tint); }
+.lg-bar button.is-hot svg { transform: scale(1.12); }
+
+.lg-fab {
+  width: 62px; height: 62px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; color: #1C1C1E;
+  transition: width .45s var(--ios-sheet), height .45s var(--ios-sheet), transform .35s var(--spring), background .25s, color .25s;
+}
+.lg-fab svg { width: 26px; height: 26px; stroke-width: 2.4; }
+.lg-fab:active { transform: scale(1.08); }
+:root[data-ui="ios"] .lg-fab[aria-current="page"] { background: rgba(58, 75, 255, .88); color: #fff; }
+
+/* Minimized while scrolling down: labels tuck away, bar slims */
+.ios-tabs.is-min .lg-bar { height: 48px; }
+.ios-tabs.is-min .lg-bar button span { opacity: 0; max-height: 0; }
+.ios-tabs.is-min .lg-fab { width: 48px; height: 48px; }
+
+/* ---------- Nav bar + large title ---------- */
+.ios-nav {
+  position: fixed; z-index: 44; top: 0; left: 0; right: 0;
+  height: calc(var(--safe-top) + 54px); padding: var(--safe-top) calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left));
+  display: flex; align-items: center; justify-content: flex-end;
+}
+/* Scroll-edge effect: a soft blur that fades into the content */
+.ios-nav::before {
+  content: ""; position: absolute; inset: 0 0 -18px; z-index: -1; pointer-events: none; opacity: 0;
+  background: linear-gradient(rgba(242, 242, 247, .9), rgba(242, 242, 247, .55) 70%, rgba(242, 242, 247, 0));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(#000 65%, transparent); mask-image: linear-gradient(#000 65%, transparent);
+  transition: opacity .25s;
+}
+.ios-nav.is-inline::before { opacity: 1; }
+.ios-nav-title {
+  position: absolute; left: 50%; bottom: 15px; transform: translate(-50%, 6px); opacity: 0;
+  font-size: 17px; font-weight: 600; letter-spacing: -.02em; white-space: nowrap;
+  transition: opacity .2s, transform .3s var(--ios-sheet);
+}
+.ios-nav.is-inline .ios-nav-title { opacity: 1; transform: translate(-50%, 0); }
+.ios-nav-actions { display: flex; align-items: center; gap: 8px; }
+.lg-capsule, .lg-circle {
+  height: 40px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; color: #1C1C1E;
+  transition: transform .35s var(--spring), opacity .2s;
+}
+.lg-capsule { gap: 6px; padding: 0 14px; font-size: 14.5px; font-weight: 500; }
+.lg-capsule svg { width: 16px; height: 16px; color: var(--tint); }
+.lg-circle { width: 40px; }
+.lg-circle svg { width: 19px; height: 19px; }
+.lg-capsule:active, .lg-circle:active { transform: scale(1.1); }
+.ios-nav.is-inline .lg-capsule { opacity: 0; pointer-events: none; }
+
+.ios-large { padding: calc(var(--safe-top) + 58px) 4px 14px; }
+.ios-large h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
+.ios-kicker { font-size: 13px; font-weight: 600; color: var(--tint); margin-bottom: 2px; }
+
+/* ---------- Restyled app components ---------- */
+:root[data-ui="ios"] .glass { border: 0; border-radius: 26px; box-shadow: 0 1px 1px rgba(0, 0, 0, .02); }
+:root[data-ui="ios"] .hero { border-radius: 30px; }
+:root[data-ui="ios"] .hero-num,
+:root[data-ui="ios"] .tile-val,
+:root[data-ui="ios"] .amount-field input { font-family: ui-rounded, -apple-system, system-ui, sans-serif; letter-spacing: -.03em; }
+:root[data-ui="ios"] .eyebrow { font-family: var(--font-sans); font-size: 12px; font-weight: 500; letter-spacing: .02em; color: var(--ios-label-2); }
+:root[data-ui="ios"] .hero .eyebrow { color: rgba(255, 255, 255, .7); }
+:root[data-ui="ios"] .tile .eyebrow { color: rgba(14, 14, 16, .6); }
+:root[data-ui="ios"] .card-title { letter-spacing: -.02em; }
+
+:root[data-ui="ios"] .input { background: var(--ios-fill); border-radius: 12px; }
+:root[data-ui="ios"] .input:focus,
+:root[data-ui="ios"] .amount-field:focus-within { background: #fff; border-color: transparent; box-shadow: 0 0 0 2px var(--tint); }
+:root[data-ui="ios"] .amount-field { background: var(--ios-fill); }
+
+:root[data-ui="ios"] .pill { background: var(--ios-fill); }
+:root[data-ui="ios"] .pill.plus { background: #fff; }
+:root[data-ui="ios"] .pill[aria-pressed="true"] { background: var(--tint); color: #fff; }
+/* Segmented control */
+:root[data-ui="ios"] .seg { padding: 2px; border-radius: 999px; background: var(--ios-fill); }
+:root[data-ui="ios"] .seg .pill { border-radius: 999px; }
+:root[data-ui="ios"] .seg .pill[aria-pressed="true"] { background: #fff; color: #000; box-shadow: 0 3px 8px rgba(0, 0, 0, .12), 0 3px 1px rgba(0, 0, 0, .04); }
+
+/* Prominent glass button */
+:root[data-ui="ios"] .submit {
+  height: 54px; border-radius: 999px; background: var(--tint);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .35), 0 12px 24px -12px rgba(58, 75, 255, .7);
+}
+:root[data-ui="ios"] .submit:hover { background: var(--tint); }
+:root[data-ui="ios"] .submit:active { transform: scale(.97); filter: brightness(1.08); }
+:root[data-ui="ios"] .submit .badge { border-radius: 50%; }
+:root[data-ui="ios"] .icon-btn { border-radius: 50%; background: var(--ios-fill); }
+:root[data-ui="ios"] .icon-btn:hover { background: var(--ios-fill); transform: none; }
+
+:root[data-ui="ios"] .row { border-radius: 16px; }
+:root[data-ui="ios"] .bubble.me { background: var(--tint); border-radius: 20px; border-bottom-right-radius: 6px; }
+:root[data-ui="ios"] .bubble.bot { background: #E9E9EB; border: 0; border-radius: 20px; border-bottom-left-radius: 6px; }
+
+/* Toast: glass capsule above the tab bar */
+:root[data-ui="ios"] .toast,
+:root[data-ui="ios"] .toast.above-tabbar {
+  bottom: calc(var(--tab-bottom) + 76px); border-radius: 999px; padding: 6px 6px 6px 18px;
+  background: rgba(255, 255, 255, .72); color: #1C1C1E;
+  -webkit-backdrop-filter: blur(16px) saturate(190%); backdrop-filter: blur(16px) saturate(190%);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .8), 0 0 0 .5px rgba(0, 0, 0, .07), 0 12px 30px -10px rgba(0, 0, 0, .25);
+}
+:root[data-ui="ios"] .toast button { background: transparent; color: var(--tint); font-size: 15px; border-radius: 999px; }
+:root[data-ui="ios"] .toast .tbar { display: none; }
+
+/* Buddy reacts like a notification banner */
+:root[data-ui="ios"] .buddy-pop {
+  top: calc(var(--safe-top) + 6px); left: 0; right: 0; margin: 0 auto; width: min(calc(100% - 16px), 440px); border-radius: 28px;
+}
+
+/* ---------- Sheets ---------- */
+:root[data-ui="ios"] dialog {
+  place-items: end center; background: rgba(0, 0, 0, .22);
+  -webkit-backdrop-filter: none; backdrop-filter: none; animation: iosFade .3s ease both;
+}
+.ios-scrim { position: absolute; inset: 0; }
+:root[data-ui="ios"] .sheet {
+  position: relative; width: min(calc(100% - 16px), 560px); margin-bottom: max(var(--safe-bottom), 8px);
+  max-height: calc(100dvh - var(--safe-top) - 40px); overflow-y: auto; overscroll-behavior: contain;
+  border-radius: 38px; padding: 12px 20px 22px; background: rgba(255, 255, 255, .94);
+  -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .9), 0 -10px 40px -20px rgba(0, 0, 0, .3);
+}
+:root[data-ui="ios"] .sheet::before {
+  content: ""; display: block; width: 36px; height: 5px; margin: 0 auto 14px; border-radius: 99px; background: rgba(60, 60, 67, .3);
+}
+:root[data-ui="ios"] dialog[open] .sheet { animation: iosSheetIn .5s var(--ios-sheet) both; }
+@keyframes iosSheetIn { from { transform: translateY(110%); } }
+@keyframes iosFade { from { background: rgba(0, 0, 0, 0); } }
+
+/* Accessibility: Reduce Transparency gets solid materials */
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-ui="ios"] .lg, :root[data-ui="ios"] .toast, :root[data-ui="ios"] .sheet { background: #fff; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-ui="ios"] .lg::after { display: none; }
+}
+
+/* Onboarding: body drops its safe-area padding in the iOS shell, so add it here */
+:root[data-ui="ios"] .onb { padding-top: calc(12px + var(--safe-top)); background: #fff; }

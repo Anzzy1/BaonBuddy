@@ -1,0 +1,107 @@
+/* Dark theme. Active when <html data-theme="dark"> (set from Settings → Appearance,
+   or from the OS when the setting is "System"). Unlayered so it wins over components. */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: 11 11 14;
+  --ink: 238 238 243;
+  --muted: 150 150 163;
+  --surface: 22 22 27;
+  --card: #16161B;
+  --soft: #1E1E24;
+  --hair: #26262E;
+  --hair-2: #34343E;
+  --ios-bg: #000;
+  --ios-fill: rgba(118, 118, 128, .24);
+  --ios-label-2: rgba(235, 235, 245, .6);
+}
+
+/* Surfaces */
+:root[data-theme="dark"] .glass,
+:root[data-theme="dark"] .side,
+:root[data-theme="dark"] .sheet { background: var(--card); box-shadow: none; }
+:root[data-theme="dark"] .input:focus,
+:root[data-theme="dark"] .amount-field:focus-within { background: #1A1A20; }
+:root[data-theme="dark"] .kbd { background: var(--soft); }
+:root[data-theme="dark"] .pill:hover { background: #2A2A32; }
+:root[data-theme="dark"] .pill.plus { background: var(--card); }
+:root[data-theme="dark"] .icon-btn:hover { color: #0E0E10; }
+:root[data-theme="dark"] .del:hover { background: rgba(229, 72, 77, .18); }
+:root[data-theme="dark"] .del.edit:hover { background: var(--lime); color: #0E0E10; }
+
+/* Inverted "selected" and primary controls: light on dark */
+:root[data-theme="dark"] .pill[aria-pressed="true"],
+:root[data-theme="dark"] .seg .pill[aria-pressed="true"],
+:root[data-theme="dark"] .nav-item[aria-current="page"] { background: #EEEEF3; color: #0E0E10; }
+:root[data-theme="dark"] .nav-ic { color: rgb(var(--ink)); }
+:root[data-theme="dark"] .nav-item[aria-current="page"] .nav-ic { color: #0E0E10; }
+:root[data-theme="dark"] .submit,
+:root[data-theme="dark"] .cta { background: #EEEEF3; color: #0E0E10; box-shadow: none; }
+:root[data-theme="dark"] .submit:hover,
+:root[data-theme="dark"] .cta:hover { background: var(--cobalt); color: #fff; }
+:root[data-theme="dark"] .tabbar { border: 1px solid var(--hair-2); }
+:root[data-theme="dark"] .toast { background: #26262E; }
+:root[data-theme="dark"] .mic { background: #26262E; }
+
+/* Brand blue text/icons: lighter so they read on dark surfaces */
+:root[data-theme="dark"] .amount-field .peso { color: #8E9AFF; }
+:root[data-theme="dark"] .amount-field input { caret-color: #8E9AFF; }
+:root[data-theme="dark"] .goal-tag,
+:root[data-theme="dark"] .notice-ic,
+:root[data-theme="dark"] .confirm.is-md .confirm-ic { color: #9AA5FF; background: rgba(125, 139, 255, .16); }
+:root[data-theme="dark"] .confirm.is-md .confirm-actions button:not(.is-primary):not(.is-danger):not(.is-cancel) { color: #9AA5FF; }
+:root[data-theme="dark"] .stat-ic { background: color-mix(in srgb, var(--a) 22%, var(--card)); color: color-mix(in srgb, var(--a) 70%, #fff); }
+:root[data-theme="dark"] .mini-ic, :root[data-theme="dark"] .fav .ic,
+:root[data-theme="dark"] .cat .ic, :root[data-theme="dark"] .row .ic, :root[data-theme="dark"] .onb-cat .ic { background: color-mix(in srgb, var(--c) 20%, var(--card)); }
+
+/* Status tints */
+:root[data-theme="dark"] .result.good { background: rgba(22, 163, 74, .16); }
+:root[data-theme="dark"] .result.warn { background: rgba(234, 88, 12, .16); }
+:root[data-theme="dark"] .result.bad { background: rgba(229, 72, 77, .18); }
+:root[data-theme="dark"] .cal-day.is-zero { --bgc: rgba(22, 163, 74, .10); }
+:root[data-theme="dark"] .cal-day.is-ok, :root[data-theme="dark"] .cal-key.is-ok { --bgc: rgba(22, 163, 74, .34); }
+:root[data-theme="dark"] .cal-day.is-warn, :root[data-theme="dark"] .cal-key.is-warn { --bgc: rgba(217, 119, 6, .38); }
+:root[data-theme="dark"] .cal-day.is-over, :root[data-theme="dark"] .cal-key.is-over { --bgc: rgba(229, 72, 77, .38); }
+:root[data-theme="dark"] .cal-day.is-out { color: #55555F; }
+:root[data-theme="dark"] .text-\[\#15803D\], :root[data-theme="dark"] .text-\[\#16A34A\] { color: #4ADE80; }
+:root[data-theme="dark"] .text-\[\#C2410C\] { color: #FB923C; }
+
+/* Onboarding */
+@media (min-width: 640px) {
+  :root[data-theme="dark"] .onb { background: #07070A; }
+  :root[data-theme="dark"] .onb-frame { background: var(--card); box-shadow: none; }
+}
+:root[data-theme="dark"] .onb-cat { background: var(--card); }
+:root[data-theme="dark"] .onb-cat[aria-pressed="true"] { border-color: rgb(var(--ink)); }
+:root[data-theme="dark"] .onb-cat[aria-pressed="true"] .tick { background: rgb(var(--ink)); border-color: rgb(var(--ink)); color: #0E0E10; }
+:root[data-theme="dark"] .onb-steps i { background: var(--hair-2); }
+:root[data-theme="dark"] .onb-steps i::after { background: rgb(var(--ink)); }
+:root[data-theme="dark"] .onb-name:focus { border-color: rgb(var(--ink)); }
+:root[data-theme="dark"] .avatar-opt[aria-checked="true"] { box-shadow: 0 0 0 2.5px rgb(var(--ink)); }
+:root[data-theme="dark"] .tone[aria-checked="true"] { box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px rgb(var(--ink)); }
+
+/* iOS shell */
+/* Brighter tint so blue text and icons read on black */
+:root[data-theme="dark"][data-ui="ios"] { --tint: #7D8BFF; }
+/* Glass controls had near-black icons hard-coded for the light theme */
+:root[data-theme="dark"] .lg-bar button { color: rgba(255, 255, 255, .88); }
+:root[data-theme="dark"] .lg-bar button[aria-current="page"] { color: var(--tint); }
+:root[data-theme="dark"] .lg-lens { background: rgba(255, 255, 255, .12); }
+:root[data-theme="dark"] .lg-bar.is-drag .lg-lens { background: rgba(255, 255, 255, .18); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .25), 0 6px 18px -6px rgba(0, 0, 0, .5); }
+:root[data-theme="dark"] .lg-fab { color: #fff; }
+:root[data-theme="dark"] .lg-capsule, :root[data-theme="dark"] .lg-circle { color: #fff; }
+:root[data-theme="dark"][data-ui="ios"] .lg { background: rgba(58, 58, 66, .72); }
+/* On iOS, selected pills keep the blue tint instead of the generic light inversion */
+:root[data-theme="dark"][data-ui="ios"] .pill[aria-pressed="true"] { background: var(--tint); color: #fff; }
+:root[data-theme="dark"][data-ui="ios"] .icon-btn { color: #fff; }
+:root[data-theme="dark"][data-ui="ios"] .lg { box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .16), 0 10px 30px -10px rgba(0, 0, 0, .7); }
+:root[data-theme="dark"][data-ui="ios"] .lg::after { opacity: .25; }
+:root[data-theme="dark"][data-ui="ios"] .sheet { background: rgba(28, 28, 32, .96); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1); }
+:root[data-theme="dark"][data-ui="ios"] .sheet::before { background: rgba(235, 235, 245, .3); }
+:root[data-theme="dark"][data-ui="ios"] .toast { background: rgba(44, 44, 50, .8); color: #fff; }
+:root[data-theme="dark"][data-ui="ios"] .amount-field:focus-within,
+:root[data-theme="dark"][data-ui="ios"] .pill.plus { background: var(--soft); }
+:root[data-theme="dark"][data-ui="ios"] .seg .pill[aria-pressed="true"] { background: #636366; color: #fff; }
+:root[data-theme="dark"][data-ui="ios"] .bubble.bot { background: #26262A; }
+:root[data-theme="dark"][data-ui="ios"] .onb { background: #000; }
+:root[data-theme="dark"] .ios-nav::before { background: linear-gradient(rgba(0, 0, 0, .85), rgba(0, 0, 0, .5) 70%, rgba(0, 0, 0, 0)); }

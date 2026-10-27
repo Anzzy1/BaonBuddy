@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import Icon from '@/components/Icon';
 import ExpenseRow from '@/components/ExpenseRow';
 import Mascot from '@/components/Mascot';
-import { AppState, Computed, dayLabel, groupByDay, newestFirst, pesoR, shortDate } from '@/lib/budget';
+import GoalsCard from '@/components/cards/GoalsCard';
+import UpcomingCard from '@/components/cards/UpcomingCard';
+import TrendsCard from '@/components/cards/TrendsCard';
+import { AppState, Computed, Goal, Upcoming, dayLabel, groupByDay, newestFirst, pesoR, shortDate, today } from '@/lib/budget';
 import { feedbackMessage } from '@/lib/feedback';
 import type { TabId } from '@/components/Sidebar';
 
@@ -14,9 +17,14 @@ interface OverviewTabProps {
   newId: string | null;
   onTab: (t: TabId) => void;
   onSettings: () => void;
+  onAddMoney: () => void;
+  onGoal: (g: Goal | null) => void;
+  onUpcoming: (u: Upcoming | null) => void;
+  onPay: (u: Upcoming) => void;
+  onPeriodEnd: () => void;
 }
 
-export default function OverviewTab({ state, c, newId, onTab, onSettings }: OverviewTabProps) {
+export default function OverviewTab({ state, c, newId, onTab, onSettings, onAddMoney, onGoal, onUpcoming, onPay, onPeriodEnd }: OverviewTabProps) {
   const [aiMsg, setAiMsg] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [displayedMsg, setDisplayedMsg] = useState('');
@@ -30,7 +38,7 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.budget, state.start, state.end, state.expenses]);
+  }, [state.budget, state.start, state.end, state.expenses, state.upcoming, state.settings?.lang]);
 
   // Typing effect
   useEffect(() => {
@@ -55,6 +63,18 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+      {/* A custom period that ran out waits for the student to start the next one */}
+      {today() > state.end && (
+        <section className="notice reveal lg:col-span-12" aria-label="Period ended">
+          <span className="notice-ic"><Icon name="calendar" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">Your period ended on {shortDate(state.end)}</span>
+            <span className="block text-[13px] text-muted">See how it went and start the next one.</span>
+          </span>
+          <button type="button" className="pill sm plus shrink-0" onClick={onPeriodEnd}>Review</button>
+        </section>
+      )}
+
       {/* Hero */}
       <section
         className={`hero reveal lg:col-span-7 flex flex-col justify-between ${over ? 'is-over' : ''}`}
@@ -79,15 +99,23 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
             </span>
             <span className="eyebrow">{over ? 'Over budget by' : 'Remaining balance'}</span>
           </div>
-          <h1 className="hero-num tnum mt-5" aria-live="polite">
-            <span className="peso">₱</span>
-            {Number(remWhole).toLocaleString('en-PH')}
-            <span className="cents">.{remCents}</span>
-          </h1>
+          {/* Balance with "Add money" beside it, so the card doesn't get taller */}
+          <div className="flex items-center gap-3 mt-5">
+            <h1 className="hero-num tnum min-w-0" aria-live="polite">
+              <span className="peso">₱</span>
+              {Number(remWhole).toLocaleString('en-PH')}
+              <span className="cents">.{remCents}</span>
+            </h1>
+            <button type="button" className="add-money shrink-0 ml-auto sm:ml-2" onClick={onAddMoney} aria-label="Add money">
+              <Icon name="plus" />
+              <span>Add<span className="hidden sm:inline"> money</span></span>
+            </button>
+          </div>
 
           {/* Buddy: friendly real-time feedback on how the baon is going */}
           <div className="buddy mt-7">
             <Mascot
+              avatar={state.profile?.avatar}
               size={84}
               waving={aiLoading || displayedMsg.length < aiMsg.length}
               talking={!aiLoading && displayedMsg.length < aiMsg.length}
@@ -95,7 +123,7 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <p className="font-display font-extrabold text-[17px] tracking-tight leading-none">Buddy</p>
-                <span className="buddy-live"><span className="status-dot live" />{aiLoading ? 'nag-iisip…' : 'kaibigan mo sa baon'}</span>
+                <span className="buddy-live"><span className="status-dot live" />{aiLoading ? 'thinking…' : 'your budget assistant'}</span>
               </div>
               <p className="buddy-msg">
                 {aiLoading && !displayedMsg ? (
@@ -125,7 +153,7 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
           <button className="tile" onClick={onSettings} aria-label="Edit total budget">
             <span className="tile-label eyebrow">Budget <Icon name="pencil" /></span>
             <span className="tile-val tnum">{pesoR(state.budget)}</span>
-            <span className="tile-sub">{shortDate(state.start)} – {shortDate(state.end)}</span>
+            <span className="tile-sub">{c.reserved > 0 ? `${pesoR(c.reserved)} set aside` : c.added > 0 ? `+${pesoR(c.added)} added` : c.savings > 0 ? `${pesoR(c.savings)} to savings` : `${shortDate(state.start)} – ${shortDate(state.end)}`}</span>
           </button>
           <button className="tile" style={{ '--t': 'var(--lavender)' } as React.CSSProperties} onClick={() => onTab('manage')} aria-label="Manage expenses">
             <span className="tile-label eyebrow">Spent</span>
@@ -144,7 +172,7 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
       <section className="glass reveal p-6 lg:col-span-5 flex flex-col" style={{ '--d': '.1s' } as React.CSSProperties} aria-label="Budget meter">
         <div className="flex items-center justify-between">
           <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--mint)]"><Icon name="gauge" /></span>Budget meter</h2>
-          <span className="text-[13px] text-muted tnum">{pesoR(c.spent)} / {pesoR(state.budget)}</span>
+          <span className="text-[13px] text-muted tnum">{pesoR(c.spent)} / {pesoR(c.spendable)}</span>
         </div>
 
         <div className="flex items-center gap-5 sm:gap-6 mt-6">
@@ -210,10 +238,14 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
         </div>
       </section>
 
+      <UpcomingCard state={state} c={c} onOpen={onUpcoming} onPay={onPay} />
+      <GoalsCard state={state} onGoal={onGoal} />
+      <TrendsCard state={state} c={c} />
+
       {/* Recent */}
       <section className="glass reveal p-4 sm:p-6 lg:col-span-12" style={{ '--d': '.15s' } as React.CSSProperties} aria-label="Recent expenses">
         <div className="flex items-center justify-between gap-3 px-2 sm:px-0">
-          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="receipt" /></span>Recent gastos</h2>
+          <h2 className="card-title flex items-center gap-3"><span className="title-ic bg-[var(--pink)]"><Icon name="receipt" /></span>Recent expenses</h2>
           <div className="flex gap-2">
             <button type="button" className="pill sm plus" onClick={() => onTab('log')}><Icon name="plus" className="w-3.5 h-3.5" />Log</button>
             <button type="button" className="pill sm" onClick={() => onTab('manage')}>See all</button>
@@ -221,7 +253,7 @@ export default function OverviewTab({ state, c, newId, onTab, onSettings }: Over
         </div>
         <div className="mt-2">
           {recent.length === 0 ? (
-            <p className="text-sm text-muted text-center py-10">Wala pang gastos. Log your first one.</p>
+            <p className="text-sm text-muted text-center py-10">No expenses yet. Log your first one.</p>
           ) : (
             recent.map(g => (
               <div key={g.date}>

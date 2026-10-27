@@ -1,8 +1,22 @@
 'use client';
 
+import { AvatarArt, parseAvatar } from '@/components/Avatar';
+
 // Buddy, the student budget buddy. Waves while a reply is being generated
-// and moves the mouth while the reply types out.
-export default function Mascot({ waving = false, talking = false, size = 64 }: { waving?: boolean; talking?: boolean; size?: number }) {
+// and moves the mouth while the reply types out. With `avatar`, Buddy takes the
+// look of the student's chosen profile avatar.
+export default function Mascot({ waving = false, talking = false, size = 64, avatar }: { waving?: boolean; talking?: boolean; size?: number; avatar?: string }) {
+  if (avatar) {
+    return (
+      <span
+        className={`mascot is-avatar ${waving ? 'is-waving' : ''} ${talking ? 'is-talking' : ''}`}
+        style={{ width: size, height: size, borderRadius: size * 0.31, background: parseAvatar(avatar).preset.bg }}
+        aria-hidden="true"
+      >
+        <AvatarArt id={avatar} animated />
+      </span>
+    );
+  }
   return (
     <span
       className={`mascot ${waving ? 'is-waving' : ''} ${talking ? 'is-talking' : ''}`}

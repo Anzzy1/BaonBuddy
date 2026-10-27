@@ -2,6 +2,8 @@
 
 import {
   Calendar,
+  Bell,
+  CalendarClock,
   Settings2,
   Sun,
   Moon,
@@ -39,11 +41,18 @@ import {
   Image,
   SwitchCamera,
   WifiOff,
+  ArrowLeft,
+  ArrowRight,
+  Lock,
+  UserRound,
+  RotateCcw,
   LucideProps,
 } from 'lucide-react';
 
 const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   calendar: Calendar,
+  bell: Bell,
+  'calendar-clock': CalendarClock,
   'settings-2': Settings2,
   sun: Sun,
   moon: Moon,
@@ -81,6 +90,11 @@ const iconMap: Record<string, React.ComponentType<LucideProps>> = {
   camera: Camera,
   image: Image,
   'switch-camera': SwitchCamera,
+  'arrow-left': ArrowLeft,
+  'arrow-right': ArrowRight,
+  lock: Lock,
+  user: UserRound,
+  'rotate-ccw': RotateCcw,
 };
 
 interface IconProps extends LucideProps {

@@ -22,7 +22,9 @@ const TL_WORDS = new Set(
   ('ako ko mo ng nang sa yung ung ang na lang naman po kumain bumili binili nagbayad bayad pamasahe kahapon kanina ' +
     'ngayon kagabi magkano natitira gastos ginastos gumastos tig bawat kada piso isang mga para ba kasi din rin pa nga ' +
     'ito yan iyan dito wala meron may siya kami tayo pero tapos saka pati hindi oo nung noong sakay nagpaload nagload ' +
-    'pambili ulam kanin almusal tanghalian hapunan meryenda merienda lumabas nag binayaran pang').split(' '),
+    'pambili ulam kanin almusal tanghalian hapunan meryenda merienda lumabas nag binayaran pang ' +
+    'ka kung kaya pag kapag muna ikaw iyon yun huwag wag puwede pwede sige talaga hanggang dahil ay si ni natin atin mas ' +
+    'lahat bukas araw gumastos natira matitira ipon makaipon bawasan tipid').split(' '),
 );
 const EN_WORDS = new Set(
   ('i the for my bought buy spent spend paid pay on and with today yesterday a an to of how much what is was had got ' +
@@ -189,17 +191,20 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 const CAT_WORDS: Record<string, string[]> = {
   food: [
     'food', 'foods', 'eat', 'ate', 'eating', 'kain', 'kumain', 'kinain', 'kakain', 'lunch', 'dinner', 'breakfast', 'brunch',
-    'almusal', 'tanghalian', 'hapunan', 'merienda', 'meryenda', 'snack', 'snacks', 'ulam', 'kanin', 'rice', 'silog', 'tapsilog',
-    'longsilog', 'tocilog', 'hotsilog', 'siomai', 'siopao', 'fishball', 'kwek', 'kwekkwek', 'kikiam', 'isaw', 'bbq', 'barbecue',
-    'burger', 'burgers', 'fries', 'pizza', 'pasta', 'spaghetti', 'chicken', 'manok', 'pork', 'baboy', 'beef', 'fish', 'isda',
-    'noodles', 'pancit', 'mami', 'lomi', 'ramen', 'shawarma', 'sandwich', 'bread', 'tinapay', 'pandesal', 'coffee', 'kape',
-    'starbucks', 'milktea', 'milk tea', 'tea', 'boba', 'drink', 'drinks', 'inumin', 'juice', 'softdrinks', 'soda', 'coke',
-    'water', 'tubig', 'gulaman', 'buko', 'halo-halo', 'halohalo', 'ice cream', 'dessert', 'cake', 'donut', 'donuts', 'chocolate',
-    'candy', 'chips', 'biscuit', 'biscuits', 'biskwit', 'cookies', 'canteen', 'karinderya', 'carinderia', 'fastfood', 'jollibee',
-    'jolibee', 'mcdo', 'mcdonalds', 'kfc', 'chowking', 'greenwich', 'mang inasal', 'inasal', 'grabfood', 'foodpanda', 'takeout',
-    'meal', 'meals', 'ulam', 'egg', 'itlog', 'fruit', 'fruits', 'prutas', 'gulay', 'palengke', 'grocery', 'groceries', 'turon',
-    'banana cue', 'lugaw', 'goto', 'arroz caldo', 'siopao', 'hotdog', 'footlong', 'taho', 'mais', 'corn', 'kakanin', 'puto',
-    'pagkain', 'chibog', 'kwekwek', 'yakult', 'samgyup', 'samgyupsal', 'buffet', 'unli', 'kfc',
+    'almusal', 'tanghalian', 'hapunan', 'ulam', 'kanin', 'rice', 'silog', 'tapsilog', 'longsilog', 'tocilog', 'hotsilog',
+    'siomai', 'siopao', 'bbq', 'barbecue', 'burger', 'burgers', 'fries', 'pizza', 'pasta', 'spaghetti', 'chicken', 'manok',
+    'pork', 'baboy', 'beef', 'fish', 'isda', 'noodles', 'pancit', 'mami', 'lomi', 'ramen', 'shawarma', 'sandwich', 'bread',
+    'tinapay', 'pandesal', 'canteen', 'karinderya', 'carinderia', 'fastfood', 'jollibee', 'jolibee', 'mcdo', 'mcdonalds', 'kfc',
+    'chowking', 'greenwich', 'mang inasal', 'inasal', 'grabfood', 'foodpanda', 'takeout', 'meal', 'meals', 'egg', 'itlog',
+    'fruit', 'fruits', 'prutas', 'gulay', 'palengke', 'grocery', 'groceries', 'lugaw', 'goto', 'arroz caldo', 'hotdog',
+    'footlong', 'pagkain', 'chibog', 'samgyup', 'samgyupsal', 'buffet', 'unli',
+  ],
+  snacks: [
+    'snack', 'snacks', 'merienda', 'meryenda', 'coffee', 'kape', 'starbucks', 'milktea', 'milk tea', 'tea', 'boba', 'drink',
+    'drinks', 'inumin', 'juice', 'softdrinks', 'soda', 'coke', 'water', 'tubig', 'gulaman', 'buko', 'halo-halo', 'halohalo',
+    'ice cream', 'dessert', 'cake', 'donut', 'donuts', 'chocolate', 'candy', 'chips', 'biscuit', 'biscuits', 'biskwit', 'cookies',
+    'fishball', 'kwek', 'kwekkwek', 'kwekwek', 'kikiam', 'isaw', 'turon', 'banana cue', 'taho', 'mais', 'corn', 'kakanin',
+    'puto', 'yakult', 'frappe', 'latte', 'shake', 'smoothie',
   ],
   transpo: [
     'jeep', 'jeepney', 'dyip', 'bus', 'tricycle', 'trike', 'traysikel', 'pedicab', 'padyak', 'fare', 'fares', 'pamasahe',
@@ -218,20 +223,47 @@ const CAT_WORDS: Record<string, string[]> = {
   ],
   load: [
     'load', 'loads', 'nagpaload', 'nagload', 'pa-load', 'regular load', 'promo', 'data', 'mobile data', 'gigasurf', 'giga',
-    'gomo', 'smart', 'globe', 'tnt', 'tm', 'dito', 'sim', 'wifi', 'piso wifi', 'pisonet', 'internet', 'subscription', 'netflix',
-    'spotify', 'youtube premium', 'vpn', 'cellphone', 'cp', 'phone', 'unli data',
+    'gomo', 'smart', 'globe', 'tnt', 'tm', 'dito', 'sim', 'wifi', 'piso wifi', 'pisonet', 'internet', 'vpn', 'cellphone', 'cp',
+    'phone', 'unli data',
   ],
   gala: [
     'gala', 'lakad', 'outing', 'movie', 'movies', 'sine', 'cinema', 'mall', 'party', 'inuman', 'inom', 'beer', 'alak', 'bar',
-    'club', 'concert', 'gig', 'games', 'game', 'gaming', 'arcade', 'timezone', 'diamonds', 'robux', 'steam', 'valorant', 'skin',
-    'skins', 'karaoke', 'videoke', 'ktv', 'bowling', 'date', 'hangout', 'tambay', 'resort', 'swimming', 'beach', 'trip',
-    'travel', 'staycation', 'tropa', 'barkada', 'friends', 'night out', 'computer shop', 'comshop', 'billiards',
+    'club', 'concert', 'gig', 'karaoke', 'videoke', 'ktv', 'bowling', 'date', 'hangout', 'tambay', 'resort', 'swimming',
+    'beach', 'trip', 'travel', 'staycation', 'tropa', 'barkada', 'friends', 'night out', 'billiards',
+  ],
+  shopping: [
+    'shopping', 'clothes', 'damit', 'shoes', 'sapatos', 'shirt', 'tshirt', 't-shirt', 'pants', 'jeans', 'shorts', 'dress',
+    'bag', 'jacket', 'hoodie', 'cap', 'socks', 'medyas', 'accessories', 'earrings', 'watch', 'shopee', 'lazada', 'tiktok shop',
+    'ukay', 'ukay-ukay', 'online order', 'case', 'phone case', 'earphones', 'headphones', 'charger',
+  ],
+  personal: [
+    'haircut', 'gupit', 'salon', 'barber', 'toiletries', 'shampoo', 'conditioner', 'soap', 'sabon', 'toothpaste', 'toothbrush',
+    'lotion', 'deodorant', 'deo', 'skincare', 'sunscreen', 'makeup', 'lipstick', 'perfume', 'pabango', 'cologne', 'sanitary',
+    'napkin', 'pads', 'tissue', 'alcohol', 'laundry', 'laba', 'watsons',
+  ],
+  health: [
+    'medicine', 'gamot', 'hospital', 'doctor', 'clinic', 'checkup', 'check-up', 'consultation', 'vitamins', 'vitamin',
+    'pharmacy', 'botika', 'mercury', 'biogesic', 'neozep', 'paracetamol', 'dentist', 'pills', 'vaccine', 'eyeglasses',
+    'salamin', 'gym', 'fitness',
+  ],
+  bills: [
+    'rent', 'upa', 'renta', 'bills', 'bill', 'kuryente', 'electricity', 'meralco', 'water bill', 'dorm', 'boarding',
+    'boarding house', 'bedspace', 'apartment', 'condo', 'utilities', 'postpaid',
+  ],
+  subs: [
+    'subscription', 'subscriptions', 'netflix', 'spotify', 'youtube premium', 'disney', 'disney+', 'hbo', 'viu', 'icloud',
+    'google one', 'canva', 'chatgpt', 'premium', 'apple music', 'prime video',
+  ],
+  gifts: [
+    'gift', 'gifts', 'regalo', 'birthday', 'bday', 'donation', 'abuloy', 'pasalubong', 'flowers', 'bulaklak', 'anniversary',
+    'christmas', 'monthsary',
+  ],
+  games: [
+    'games', 'game', 'gaming', 'arcade', 'timezone', 'diamonds', 'robux', 'steam', 'valorant', 'skin', 'skins', 'computer shop',
+    'comshop', 'mobile legends', 'mlbb', 'genshin', 'codm', 'top up', 'topup', 'playstation', 'nintendo', 'roblox',
   ],
   other: [
-    'gift', 'gifts', 'regalo', 'ambag', 'contribution', 'donation', 'abuloy', 'laundry', 'laba', 'haircut', 'gupit', 'medicine',
-    'gamot', 'hospital', 'doctor', 'clinic', 'toiletries', 'shampoo', 'soap', 'sabon', 'toothpaste', 'rent', 'upa', 'renta',
-    'bills', 'kuryente', 'electricity', 'clothes', 'damit', 'shoes', 'sapatos', 'shirt', 'tshirt', 'pants', 'bag', 'shopping',
-    'others', 'other', 'misc', 'savings', 'utang', 'bayad utang', 'lent',
+    'ambag', 'contribution', 'others', 'other', 'misc', 'savings', 'utang', 'bayad utang', 'lent',
   ],
 };
 
